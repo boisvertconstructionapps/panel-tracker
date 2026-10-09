@@ -4,4 +4,4 @@ Panel Tracker is a mobile-first electrical panel and breaker tracker. Open it in
 
 Live app: https://boisvertconstructionapps.github.io/panel-tracker/
 
-Your jobs, panels, and breakers are stored on the phone in this browser. They are not saved on a server. To move them to another phone, use Backup and Import in the app.
+Your jobs, panels, breakers, and photos are stored on the phone in this browser. They are not saved on a server. Photos are kept with the panel and are included in Backup. To move everything to another phone, use Backup and Import in the app.

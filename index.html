@@ -658,6 +658,121 @@
     }
     .toast.show { opacity: 1; }
 
+    .photos-sheet {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 10020;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 12px;
+    }
+    .photos-sheet.open { display: flex; }
+    .photos-sheet-card {
+      background: #1a1a24;
+      border: 1px solid #2e2e42;
+      border-radius: 14px;
+      padding: 16px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 86vh;
+      overflow: auto;
+    }
+    .photos-sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .photos-sheet-head strong { font-size: 1.05rem; }
+    .photo-saving {
+      color: var(--warning);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 6px 0;
+    }
+    .photos-empty {
+      color: var(--text-dim);
+      font-size: 0.88rem;
+      margin: 8px 0 12px;
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .photo-thumb {
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: #111;
+      cursor: pointer;
+    }
+    .photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+    .photo-viewer {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 10050;
+      display: none;
+      flex-direction: column;
+      touch-action: none;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .photo-viewer.open { display: flex; }
+    .photo-viewer-top, .photo-viewer-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #111;
+    }
+    .photo-viewer-top { justify-content: space-between; }
+    .photo-viewer-stage {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .photo-viewer-stage img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      touch-action: none;
+    }
+    .photo-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 64px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.45);
+      color: white;
+      font-size: 2rem;
+      z-index: 2;
+    }
+    .photo-nav.prev { left: 6px; }
+    .photo-nav.next { right: 6px; }
+    .photo-viewer-bottom { flex-wrap: wrap; }
+    .photo-viewer-bottom input { flex: 1; min-width: 140px; }
+    .photo-viewer-actions { display: flex; gap: 8px; width: 100%; }
+    .photo-viewer-actions .btn { flex: 1; }
+
     .contact-btn {
       width: 100%;
       margin-top: 6px;
@@ -682,7 +797,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.08b</span>
+      <span class="app-version" title="App version">v2026.10.09</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -721,7 +836,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.08b</span>
+      <span class="app-version">v2026.10.09</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -749,6 +864,40 @@
       <button class="btn btn-sm" onclick="exportPanelPDF()">PDF</button>
       <button class="btn btn-sm" onclick="exportPanelExcel()">Excel</button>
       <button class="btn btn-sm" onclick="exportThisPanel()">Share panel</button>
+      <button class="btn btn-sm" id="btn-photos" onclick="openPhotosSheet()">Photos</button>
+    </div>
+  </div>
+
+  <div id="photos-sheet" class="photos-sheet">
+    <div class="photos-sheet-card">
+      <div class="photos-sheet-head">
+        <strong>Photos</strong>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="closePhotosSheet()">Close</button>
+      </div>
+      <div id="photo-saving" class="photo-saving" style="display:none;">Saving…</div>
+      <p id="photos-empty" class="photos-empty">No photos for this panel yet. Add one from the camera or gallery.</p>
+      <div id="photo-grid" class="photo-grid"></div>
+      <button type="button" class="btn btn-primary" style="width:100%;" onclick="document.getElementById('photo-input').click()">Add photo</button>
+      <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="addPanelPhotos(event)">
+    </div>
+  </div>
+
+  <div id="photo-viewer" class="photo-viewer">
+    <div class="photo-viewer-top">
+      <button type="button" class="btn btn-sm btn-ghost" onclick="closePhotoViewer()">Close</button>
+      <span id="photo-viewer-count"></span>
+    </div>
+    <div class="photo-viewer-stage" id="photo-viewer-stage">
+      <button type="button" class="photo-nav prev" onclick="stepPhoto(-1)" aria-label="Previous photo">‹</button>
+      <img id="photo-viewer-img" alt="Panel photo">
+      <button type="button" class="photo-nav next" onclick="stepPhoto(1)" aria-label="Next photo">›</button>
+    </div>
+    <div class="photo-viewer-bottom">
+      <input type="text" id="photo-caption" placeholder="Caption (optional)" maxlength="200" onchange="saveViewerCaption()">
+      <div class="photo-viewer-actions">
+        <button type="button" class="btn btn-primary" onclick="shareOrSavePhoto()">Save / Share</button>
+        <button type="button" class="btn btn-danger" onclick="deleteViewerPhoto()">Delete</button>
+      </div>
     </div>
   </div>
 
@@ -980,6 +1129,7 @@
       } catch (e) { console.warn(e); }
     }
     function saveData() {
+      if (data && Object.prototype.hasOwnProperty.call(data, 'photos')) delete data.photos;
       localStorage.setItem('panelTrackerData', JSON.stringify(data));
     }
 
@@ -989,6 +1139,7 @@
 
     // ===================== NAVIGATION =====================
     function showScreen(name) {
+      if (name !== 'panel') closePhotoUi();
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + name).classList.add('active');
       if (name === 'jobs') renderJobs();
@@ -1097,12 +1248,16 @@
     }
 
     function deleteJob() {
-      if (!confirm('Delete this job and all its panels?')) return;
+      if (!confirm('Delete this job and all its panels and photos?')) return;
+      const job = data.jobs.find(j => j.id === editingJobId);
+      const panelIds = (job && job.panels ? job.panels : []).map(p => p.id);
       data.jobs = data.jobs.filter(j => j.id !== editingJobId);
       saveData();
+      const pendingPhotos = deletePhotosForPanels(panelIds);
       closeModal('job');
       showScreen('jobs');
       toast('Job deleted');
+      return pendingPhotos;
     }
 
     // Contact Picker
@@ -1174,6 +1329,7 @@
       showScreen('panel');
       renderPanelVisual();
       updateUndoButton();
+      refreshPhotoButton();
     }
 
     function getPanel() {
@@ -1253,14 +1409,17 @@
     }
 
     function deletePanel() {
-      if (!confirm('Delete this panel and all breakers?')) return;
+      if (!confirm('Delete this panel, its breakers, and its photos?')) return;
       const job = getCurrentJob();
-      job.panels = job.panels.filter(p => p.id !== editingPanelId);
+      const removedId = editingPanelId;
+      job.panels = job.panels.filter(p => p.id !== removedId);
       saveData();
+      const pendingPhotos = deletePhotosForPanels([removedId]);
       closeModal('panel');
       showScreen('job');
       renderPanels();
       toast('Panel deleted');
+      return pendingPhotos;
     }
 
     // ===================== PANEL VISUAL =====================
@@ -3010,42 +3169,603 @@
       toast('Excel/CSV downloaded (2-column layout)');
     }
 
-    function exportAllData() {
-      downloadFile(JSON.stringify(data, null, 2), 'panel_tracker_backup.json', 'application/json');
-      toast('Full backup downloaded');
+    // ===================== PANEL PHOTOS (IndexedDB) =====================
+    let panelPhotoCache = [];
+    let photoViewerIndex = 0;
+    let photoObjectUrls = [];
+    let viewerObjectUrl = null;
+    let photoSwipe = null;
+
+    function openPhotoDb() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+          reject(new Error('IndexedDB unavailable'));
+          return;
+        }
+        const req = indexedDB.open('panelTrackerPhotos', 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('photos')) {
+            const store = db.createObjectStore('photos', { keyPath: 'id' });
+            store.createIndex('panelId', 'panelId', { unique: false });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error('Could not open photo store'));
+      });
     }
 
-    function exportThisPanel() {
+    function withPhotoStore(mode, fn) {
+      return openPhotoDb().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction('photos', mode);
+        try {
+          fn(tx.objectStore('photos'));
+        } catch (err) {
+          try { db.close(); } catch (e) { /* ignore */ }
+          reject(err);
+          return;
+        }
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error || new Error('photo store error')); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error('photo store aborted')); };
+      }));
+    }
+
+    function getAllPhotos() {
+      const box = { rows: [] };
+      return withPhotoStore('readonly', store => {
+        const req = store.getAll();
+        req.onsuccess = () => { box.rows = req.result || []; };
+      }).then(() => box.rows);
+    }
+
+    function getPhotosForPanel(panelId) {
+      const box = { rows: [] };
+      return withPhotoStore('readonly', store => {
+        const req = store.index('panelId').getAll(panelId);
+        req.onsuccess = () => { box.rows = req.result || []; };
+      }).then(() => box.rows);
+    }
+
+    function putPhoto(record) {
+      return withPhotoStore('readwrite', store => { store.put(record); });
+    }
+
+    function deletePhotoById(id) {
+      return withPhotoStore('readwrite', store => { store.delete(id); });
+    }
+
+    function clearAllPhotos() {
+      return withPhotoStore('readwrite', store => { store.clear(); });
+    }
+
+    function deletePhotosForPanels(panelIds) {
+      const idSet = new Set((panelIds || []).filter(Boolean));
+      if (!idSet.size) return Promise.resolve();
+      return getAllPhotos().then(rows => {
+        const keys = rows.filter(rec => rec && idSet.has(rec.panelId)).map(rec => rec.id);
+        if (!keys.length) return;
+        return withPhotoStore('readwrite', store => {
+          keys.forEach(key => store.delete(key));
+        });
+      }).catch(err => { console.warn(err); });
+    }
+
+    function orderPanelPhotos(panel, rows) {
+      const map = new Map((rows || []).map(r => [r.id, r]));
+      const ordered = [];
+      const seen = new Set();
+      ((panel && panel.photoIds) || []).forEach(id => {
+        const rec = map.get(id);
+        if (!rec || seen.has(rec.id)) return;
+        ordered.push(rec);
+        seen.add(rec.id);
+      });
+      (rows || []).slice().sort((a, b) => (a.created || 0) - (b.created || 0)).forEach(rec => {
+        if (seen.has(rec.id)) return;
+        ordered.push(rec);
+        seen.add(rec.id);
+      });
+      return ordered;
+    }
+
+    function revokePhotoUrls() {
+      photoObjectUrls.forEach(url => URL.revokeObjectURL(url));
+      photoObjectUrls = [];
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = String(reader.result || '');
+          const comma = text.indexOf(',');
+          resolve(comma >= 0 ? text.slice(comma + 1) : text);
+        };
+        reader.onerror = () => reject(reader.error || new Error('Could not read photo'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function base64ToBlob(b64, mime) {
+      let clean = String(b64 || '');
+      const comma = clean.indexOf(',');
+      if (clean.slice(0, 5) === 'data:' && comma !== -1) clean = clean.slice(comma + 1);
+      clean = clean.replace(/\s/g, '');
+      const bin = atob(clean);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime || 'image/jpeg' });
+    }
+
+    async function encodePhotoRecord(rec) {
+      return {
+        id: rec.id,
+        panelId: rec.panelId,
+        created: rec.created || Date.now(),
+        caption: rec.caption || '',
+        mime: (rec.blob && rec.blob.type) || 'image/jpeg',
+        data: await blobToBase64(rec.blob)
+      };
+    }
+
+    async function compressPhotoFile(file) {
+      let bitmap;
+      try {
+        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      } catch (err) {
+        bitmap = await createImageBitmap(file);
+      }
+      try {
+        const maxSide = 1600;
+        const longest = Math.max(bitmap.width, bitmap.height) || 1;
+        const scale = Math.min(1, maxSide / longest);
+        const w = Math.max(1, Math.round(bitmap.width * scale));
+        const h = Math.max(1, Math.round(bitmap.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(result => {
+            if (result) resolve(result);
+            else reject(new Error('Could not compress photo'));
+          }, 'image/jpeg', 0.75);
+        });
+        return blob;
+      } finally {
+        if (bitmap && bitmap.close) bitmap.close();
+      }
+    }
+
+    function setPhotoSaving(on, text) {
+      const el = document.getElementById('photo-saving');
+      if (!el) return;
+      el.style.display = on ? 'block' : 'none';
+      el.textContent = text || 'Saving…';
+    }
+
+    async function refreshPhotoButton() {
+      const btn = document.getElementById('btn-photos');
+      if (!btn) return;
+      const panel = getPanel();
+      if (!panel) {
+        btn.textContent = 'Photos';
+        return;
+      }
+      try {
+        const rows = await getPhotosForPanel(panel.id);
+        btn.textContent = rows.length ? ('Photos (' + rows.length + ')') : 'Photos';
+      } catch (err) {
+        console.warn(err);
+        btn.textContent = 'Photos';
+      }
+    }
+
+    async function renderPhotoSheet() {
+      const panel = getPanel();
+      const grid = document.getElementById('photo-grid');
+      const empty = document.getElementById('photos-empty');
+      if (!grid) return;
+      revokePhotoUrls();
+      grid.innerHTML = '';
+      panelPhotoCache = [];
+      if (!panel) {
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      const rows = orderPanelPhotos(panel, await getPhotosForPanel(panel.id));
+      panelPhotoCache = rows;
+      if (empty) empty.style.display = rows.length ? 'none' : 'block';
+      rows.forEach((rec, index) => {
+        const url = URL.createObjectURL(rec.blob);
+        photoObjectUrls.push(url);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'photo-thumb';
+        btn.setAttribute('aria-label', rec.caption ? rec.caption : ('Photo ' + (index + 1)));
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = url;
+        btn.appendChild(img);
+        btn.addEventListener('click', () => openPhotoViewer(index));
+        grid.appendChild(btn);
+      });
+    }
+
+    async function openPhotosSheet() {
+      if (!getPanel()) return;
+      const sheet = document.getElementById('photos-sheet');
+      if (!sheet) return;
+      sheet.classList.add('open');
+      try {
+        await renderPhotoSheet();
+      } catch (err) {
+        console.warn(err);
+        toast('Could not load photos');
+      }
+    }
+
+    function closePhotosSheet() {
+      const sheet = document.getElementById('photos-sheet');
+      if (sheet) sheet.classList.remove('open');
+      closePhotoViewer();
+    }
+
+    function closePhotoUi() {
+      closePhotosSheet();
+    }
+
+    async function addPanelPhotos(event) {
+      const input = event.target;
+      const files = Array.from(input.files || []);
+      input.value = '';
+      const panelId = currentPanelId;
+      if (!panelId || !getPanel() || !files.length) return;
+      if (!document.getElementById('photos-sheet').classList.contains('open')) {
+        document.getElementById('photos-sheet').classList.add('open');
+      }
+      setPhotoSaving(true, 'Saving…');
+      let saved = 0;
+      let failed = 0;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          setPhotoSaving(true, files.length > 1 ? ('Saving… ' + (i + 1) + ' of ' + files.length) : 'Saving…');
+          try {
+            const blob = await compressPhotoFile(files[i]);
+            const id = uid();
+            await putPhoto({
+              id: id,
+              panelId: panelId,
+              blob: blob,
+              created: Date.now(),
+              caption: ''
+            });
+            const live = getPanel();
+            if (live && live.id === panelId) {
+              if (!Array.isArray(live.photoIds)) live.photoIds = [];
+              live.photoIds.push(id);
+              saveData();
+            }
+            saved++;
+          } catch (err) {
+            console.warn(err);
+            failed++;
+          }
+        }
+        await renderPhotoSheet();
+        await refreshPhotoButton();
+        if (saved && !failed) toast(saved === 1 ? 'Photo saved' : (saved + ' photos saved'));
+        else if (saved && failed) toast('Saved ' + saved + ', could not read ' + failed);
+        else toast('Could not save photo');
+      } finally {
+        setPhotoSaving(false);
+      }
+    }
+
+    function setViewerImage(rec) {
+      const img = document.getElementById('photo-viewer-img');
+      if (viewerObjectUrl) {
+        URL.revokeObjectURL(viewerObjectUrl);
+        viewerObjectUrl = null;
+      }
+      if (!img || !rec) return;
+      viewerObjectUrl = URL.createObjectURL(rec.blob);
+      img.src = viewerObjectUrl;
+    }
+
+    function showPhotoAt(index, opts) {
+      if (!panelPhotoCache.length) return;
+      if (!opts || !opts.skipSave) saveViewerCaption();
+      if (index < 0) index = 0;
+      if (index >= panelPhotoCache.length) index = panelPhotoCache.length - 1;
+      photoViewerIndex = index;
+      const rec = panelPhotoCache[index];
+      const count = document.getElementById('photo-viewer-count');
+      const caption = document.getElementById('photo-caption');
+      if (count) count.textContent = (index + 1) + ' / ' + panelPhotoCache.length;
+      if (caption) caption.value = rec.caption || '';
+      setViewerImage(rec);
+    }
+
+    function openPhotoViewer(index) {
+      const viewer = document.getElementById('photo-viewer');
+      if (!viewer) return;
+      viewer.classList.add('open');
+      showPhotoAt(index, { skipSave: true });
+    }
+
+    function closePhotoViewer() {
+      const viewer = document.getElementById('photo-viewer');
+      if (viewer && viewer.classList.contains('open')) saveViewerCaption();
+      if (viewer) viewer.classList.remove('open');
+      if (viewerObjectUrl) {
+        URL.revokeObjectURL(viewerObjectUrl);
+        viewerObjectUrl = null;
+      }
+      const img = document.getElementById('photo-viewer-img');
+      if (img) img.removeAttribute('src');
+    }
+
+    function stepPhoto(delta) {
+      if (!panelPhotoCache.length) return;
+      const next = photoViewerIndex + delta;
+      if (next < 0 || next >= panelPhotoCache.length) return;
+      showPhotoAt(next);
+    }
+
+    function saveViewerCaption() {
+      const rec = panelPhotoCache[photoViewerIndex];
+      const input = document.getElementById('photo-caption');
+      if (!rec || !input) return;
+      const caption = input.value.trim();
+      if ((rec.caption || '') === caption) return;
+      rec.caption = caption;
+      putPhoto(rec).catch(err => console.warn(err));
+    }
+
+    function photoFileName(rec) {
+      const panel = getPanel();
+      const base = ((panel && panel.name) || 'panel').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') || 'panel';
+      return base + '_' + (rec.created || Date.now()) + '.jpg';
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    async function shareOrSavePhoto() {
+      const rec = panelPhotoCache[photoViewerIndex];
+      if (!rec || !rec.blob) return;
+      saveViewerCaption();
+      const file = new File([rec.blob], photoFileName(rec), { type: rec.blob.type || 'image/jpeg' });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Panel photo', text: rec.caption || '' });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.warn(err);
+      }
+      downloadBlob(rec.blob, photoFileName(rec));
+      toast('Photo file downloaded — save it to your gallery');
+    }
+
+    async function deleteViewerPhoto() {
+      const rec = panelPhotoCache[photoViewerIndex];
+      if (!rec) return;
+      if (!confirm('Delete this photo?')) return;
+      try {
+        await deletePhotoById(rec.id);
+        const panel = getPanel();
+        if (panel && Array.isArray(panel.photoIds)) {
+          panel.photoIds = panel.photoIds.filter(id => id !== rec.id);
+          saveData();
+        }
+        const nextIndex = Math.min(photoViewerIndex, Math.max(0, panelPhotoCache.length - 2));
+        await renderPhotoSheet();
+        await refreshPhotoButton();
+        if (!panelPhotoCache.length) closePhotoViewer();
+        else showPhotoAt(nextIndex, { skipSave: true });
+        toast('Photo deleted');
+      } catch (err) {
+        console.warn(err);
+        toast('Could not delete photo');
+      }
+    }
+
+    function isolatePhotoTouches(el) {
+      if (!el) return;
+      ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(type => {
+        el.addEventListener(type, function (e) { e.stopPropagation(); }, { passive: true });
+      });
+    }
+
+    function initPhotoUi() {
+      isolatePhotoTouches(document.getElementById('photos-sheet'));
+      isolatePhotoTouches(document.getElementById('photo-viewer'));
+      const stage = document.getElementById('photo-viewer-stage');
+      if (stage) {
+        stage.addEventListener('touchstart', function (e) {
+          if (!e.touches || e.touches.length !== 1) return;
+          const tag = (e.target && e.target.tagName || '').toLowerCase();
+          if (tag === 'button' || tag === 'input' || tag === 'textarea') {
+            photoSwipe = null;
+            return;
+          }
+          photoSwipe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: true });
+        stage.addEventListener('touchend', function (e) {
+          if (!photoSwipe) return;
+          const t = e.changedTouches && e.changedTouches[0];
+          const start = photoSwipe;
+          photoSwipe = null;
+          if (!t) return;
+          const dx = t.clientX - start.x;
+          const dy = t.clientY - start.y;
+          if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+          stepPhoto(dx < 0 ? 1 : -1);
+        }, { passive: true });
+      }
+      const sheet = document.getElementById('photos-sheet');
+      if (sheet) {
+        sheet.addEventListener('click', function (e) {
+          if (e.target === sheet) closePhotosSheet();
+        });
+      }
+    }
+
+    function collectImportPhotos(parsed) {
+      const out = [];
+      if (parsed && Array.isArray(parsed.photos)) {
+        parsed.photos.forEach(ph => { if (ph) out.push(ph); });
+      }
+      const originals = [];
+      if (parsed && parsed.panel) originals.push(parsed.panel);
+      if (parsed && Array.isArray(parsed.jobs)) {
+        parsed.jobs.forEach(job => {
+          (job.panels || []).forEach(panel => originals.push(panel));
+        });
+      }
+      if (parsed && parsed.breakers && !parsed.jobs && !parsed.panel) originals.push(parsed);
+      originals.forEach(panel => {
+        if (!panel || !Array.isArray(panel.photos)) return;
+        panel.photos.forEach(ph => {
+          if (!ph) return;
+          out.push(Object.assign({}, ph, { panelId: ph.panelId || panel.id }));
+        });
+        delete panel.photos;
+      });
+      const seen = new Set();
+      const deduped = [];
+      out.forEach(ph => {
+        if (ph.id && seen.has(ph.id)) return;
+        if (ph.id) seen.add(ph.id);
+        deduped.push(ph);
+      });
+      return deduped;
+    }
+
+    async function applyImportedPhotos(photos, panelIdMap, panels, reassignPhotoIds) {
+      if (!Array.isArray(photos) || !photos.length) return 0;
+      const photoIdMap = {};
+      let count = 0;
+      for (const ph of photos) {
+        const b64 = ph && (ph.data || ph.base64);
+        if (!b64) continue;
+        const oldPanelId = ph.panelId;
+        const newPanelId = (panelIdMap && oldPanelId && panelIdMap[oldPanelId]) || oldPanelId;
+        if (!newPanelId) continue;
+        const newId = reassignPhotoIds ? uid() : (ph.id || uid());
+        if (ph.id) photoIdMap[ph.id] = newId;
+        await putPhoto({
+          id: newId,
+          panelId: newPanelId,
+          created: ph.created || Date.now(),
+          caption: ph.caption || '',
+          blob: base64ToBlob(b64, ph.mime || 'image/jpeg')
+        });
+        count++;
+      }
+      (panels || []).forEach(panel => {
+        if (!panel || !Array.isArray(panel.photoIds)) return;
+        panel.photoIds = panel.photoIds.map(id => {
+          if (photoIdMap[id]) return photoIdMap[id];
+          return reassignPhotoIds ? null : id;
+        }).filter(Boolean);
+      });
+      return count;
+    }
+
+    function photoToastSuffix(n) {
+      if (!n) return '';
+      return ' · ' + n + ' photo' + (n === 1 ? '' : 's');
+    }
+
+    async function buildFullBackup() {
+      const payload = JSON.parse(JSON.stringify(data));
+      delete payload.photos;
+      const panelIds = new Set();
+      (payload.jobs || []).forEach(job => {
+        (job.panels || []).forEach(panel => {
+          if (panel && panel.id) panelIds.add(panel.id);
+          if (panel) delete panel.photos;
+        });
+      });
+      const rows = await getAllPhotos();
+      payload.photos = [];
+      for (const rec of rows) {
+        if (!panelIds.has(rec.panelId) || !rec.blob) continue;
+        payload.photos.push(await encodePhotoRecord(rec));
+      }
+      return payload;
+    }
+
+    async function exportAllData() {
+      try {
+        const payload = await buildFullBackup();
+        const n = (payload.photos || []).length;
+        downloadFile(JSON.stringify(payload, null, 2), 'panel_tracker_backup.json', 'application/json');
+        toast('Full backup downloaded' + photoToastSuffix(n));
+      } catch (err) {
+        console.warn(err);
+        toast('Could not make backup');
+      }
+    }
+
+    async function exportThisPanel() {
       const panel = getPanel();
       const job = getCurrentJob();
       if (!panel) return;
-      const payload = {
-        type: 'panelTrackerPanel',
-        version: 1,
-        exported: new Date().toISOString(),
-        fromJob: job ? { name: job.name, address: job.address || '' } : null,
-        panel: JSON.parse(JSON.stringify(panel))
-      };
-      const fname = (panel.name || 'panel').replace(/[^a-z0-9]/gi, '_') + '_panel.json';
-      downloadFile(JSON.stringify(payload, null, 2), fname, 'application/json');
-      toast('Panel file ready to send — they Import it into a job');
+      try {
+        const copy = JSON.parse(JSON.stringify(panel));
+        delete copy.photos;
+        const rows = await getPhotosForPanel(panel.id);
+        const photos = [];
+        for (const rec of rows) {
+          if (rec && rec.blob) photos.push(await encodePhotoRecord(rec));
+        }
+        const payload = {
+          type: 'panelTrackerPanel',
+          version: 2,
+          exported: new Date().toISOString(),
+          fromJob: job ? { name: job.name, address: job.address || '' } : null,
+          panel: copy,
+          photos: photos
+        };
+        const fname = (panel.name || 'panel').replace(/[^a-z0-9]/gi, '_') + '_panel.json';
+        downloadFile(JSON.stringify(payload, null, 2), fname, 'application/json');
+        toast('Panel file ready to send — they Import it into a job' + photoToastSuffix(photos.length));
+      } catch (err) {
+        console.warn(err);
+        toast('Could not share panel');
+      }
     }
 
     let pendingImport = null;
 
     function normalizeImportedPanels(parsed) {
+      const photos = collectImportPhotos(parsed);
       // Single panel file
       if (parsed && parsed.type === 'panelTrackerPanel' && parsed.panel) {
         return {
           kind: 'panels',
           jobs: [],
           panels: [parsed.panel],
+          photos: photos,
           fromJob: parsed.fromJob || null
         };
       }
       // Raw panel object
       if (parsed && parsed.breakers && (parsed.name || parsed.spaces) && !parsed.jobs) {
-        return { kind: 'panels', jobs: [], panels: [parsed], fromJob: null };
+        return { kind: 'panels', jobs: [], panels: [parsed], photos: photos, fromJob: null };
       }
       // Full backup
       if (parsed && Array.isArray(parsed.jobs)) {
@@ -3056,7 +3776,7 @@
             _fromJobName: j.name || ''
           }));
         });
-        return { kind: 'backup', jobs: parsed.jobs, panels, fromJob: null, raw: parsed };
+        return { kind: 'backup', jobs: parsed.jobs, panels: panels, photos: photos, fromJob: null, raw: parsed };
       }
       return null;
     }
@@ -3093,19 +3813,23 @@
       const sel = document.getElementById('import-target-job');
       const replaceBtn = document.getElementById('btn-import-replace');
       const mergeBtn = document.getElementById('btn-import-merge');
+      const photoNote = (n.photos && n.photos.length)
+        ? (' Includes ' + n.photos.length + ' photo' + (n.photos.length === 1 ? '' : 's') + '.')
+        : '';
 
       if (n.kind === 'backup') {
         const jobCount = n.jobs.length;
         const panelCount = n.panels.length;
         title.textContent = 'Import backup';
-        summary.textContent = jobCount + ' job(s), ' + panelCount + ' panel(s) in this file. Add them without deleting yours, or replace everything.';
+        summary.textContent = jobCount + ' job(s), ' + panelCount + ' panel(s) in this file. Add them without deleting yours, or replace everything.' + photoNote;
         replaceBtn.style.display = 'block';
         mergeBtn.textContent = 'Merge into my jobs (keep mine)';
       } else {
         const names = n.panels.map(p => p.name || 'Panel').join(', ');
         title.textContent = 'Import panel';
         summary.textContent = (n.panels.length === 1 ? 'Panel: ' + names : n.panels.length + ' panels: ' + names)
-          + (n.fromJob && n.fromJob.name ? '  (from job “' + n.fromJob.name + '”)' : '');
+          + (n.fromJob && n.fromJob.name ? '  (from job “' + n.fromJob.name + '”)' : '')
+          + photoNote;
         replaceBtn.style.display = 'none';
         mergeBtn.textContent = 'Add to selected job';
       }
@@ -3138,6 +3862,7 @@
     function clonePanelFresh(p) {
       const copy = JSON.parse(JSON.stringify(p));
       copy.id = uid();
+      delete copy.photos;
       if (Array.isArray(copy.breakers)) {
         copy.breakers = copy.breakers.map(b => ({ ...b, id: uid() }));
       }
@@ -3165,68 +3890,100 @@
       return job;
     }
 
-    function confirmImportMerge() {
+    async function confirmImportMerge() {
       const n = pendingImport;
       if (!n) return;
       const jobId = document.getElementById('import-target-job').value;
-      if (n.kind === 'backup') {
-        // Merge jobs by name when possible; always new IDs so nothing overwrites
-        (n.jobs || []).forEach(srcJob => {
-          let dest = (data.jobs || []).find(j =>
-            (j.name || '').trim().toLowerCase() === (srcJob.name || '').trim().toLowerCase()
-          );
-          if (!dest) {
-            dest = {
-              id: uid(),
-              name: srcJob.name || 'Imported job',
-              address: srcJob.address || '',
-              notes: srcJob.notes || '',
-              contactName: srcJob.contactName || '',
-              phone: srcJob.phone || '',
-              email: srcJob.email || '',
-              panels: [],
-              created: Date.now()
-            };
-            data.jobs.push(dest);
-          }
-          (srcJob.panels || []).forEach(p => {
-            dest.panels = dest.panels || [];
-            dest.panels.push(clonePanelFresh(p));
+      try {
+        if (n.kind === 'backup') {
+          const panelMap = {};
+          const clones = [];
+          (n.jobs || []).forEach(srcJob => {
+            let dest = (data.jobs || []).find(j =>
+              (j.name || '').trim().toLowerCase() === (srcJob.name || '').trim().toLowerCase()
+            );
+            if (!dest) {
+              dest = {
+                id: uid(),
+                name: srcJob.name || 'Imported job',
+                address: srcJob.address || '',
+                notes: srcJob.notes || '',
+                contactName: srcJob.contactName || '',
+                phone: srcJob.phone || '',
+                email: srcJob.email || '',
+                panels: [],
+                created: Date.now()
+              };
+              data.jobs.push(dest);
+            }
+            (srcJob.panels || []).forEach(p => {
+              const oldId = p && p.id;
+              const fresh = clonePanelFresh(p);
+              if (oldId) panelMap[oldId] = fresh.id;
+              dest.panels = dest.panels || [];
+              dest.panels.push(fresh);
+              clones.push(fresh);
+            });
           });
+          const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
+          saveData();
+          closeImportOverlay();
+          showScreen('jobs');
+          renderJobs();
+          toast('Merged — your existing jobs/panels were kept' + photoToastSuffix(restored));
+          return;
+        }
+        const dest = ensureImportJob(jobId);
+        const panelMap = {};
+        const clones = [];
+        n.panels.forEach(p => {
+          const oldId = p && p.id;
+          const fresh = clonePanelFresh(p);
+          if (oldId) panelMap[oldId] = fresh.id;
+          dest.panels = dest.panels || [];
+          dest.panels.push(fresh);
+          clones.push(fresh);
         });
+        const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
         saveData();
+        currentJobId = dest.id;
+        closeImportOverlay();
+        showScreen('job');
+        renderPanels();
+        toast('Panel added to “' + dest.name + '”' + photoToastSuffix(restored));
+      } catch (err) {
+        console.warn(err);
+        toast('Import failed');
+      }
+    }
+
+    async function confirmImportReplace() {
+      const n = pendingImport;
+      if (!n || n.kind !== 'backup' || !n.raw) return;
+      if (!confirm('This deletes ALL your current jobs, panels, and photos. Continue?')) return;
+      try {
+        const photos = n.photos || [];
+        data = n.raw;
+        if (!data.jobs) data.jobs = [];
+        delete data.photos;
+        (data.jobs || []).forEach(job => {
+          (job.panels || []).forEach(panel => { if (panel) delete panel.photos; });
+        });
+        await clearAllPhotos();
+        const allPanels = [];
+        data.jobs.forEach(job => (job.panels || []).forEach(panel => allPanels.push(panel)));
+        const restored = await applyImportedPhotos(photos, null, allPanels, false);
+        saveData();
+        currentJobId = null;
+        currentPanelId = null;
         closeImportOverlay();
         showScreen('jobs');
         renderJobs();
-        toast('Merged — your existing jobs/panels were kept');
-        return;
+        toast('All data replaced from backup' + photoToastSuffix(restored));
+      } catch (err) {
+        console.warn(err);
+        toast('Import failed');
       }
-      const dest = ensureImportJob(jobId);
-      n.panels.forEach(p => {
-        dest.panels = dest.panels || [];
-        dest.panels.push(clonePanelFresh(p));
-      });
-      saveData();
-      currentJobId = dest.id;
-      closeImportOverlay();
-      showScreen('job');
-      renderPanels();
-      toast('Panel added to “' + dest.name + '”');
-    }
-
-    function confirmImportReplace() {
-      const n = pendingImport;
-      if (!n || n.kind !== 'backup' || !n.raw) return;
-      if (!confirm('This deletes ALL your current jobs and panels. Continue?')) return;
-      data = n.raw;
-      if (!data.jobs) data.jobs = [];
-      saveData();
-      currentJobId = null;
-      currentPanelId = null;
-      closeImportOverlay();
-      showScreen('jobs');
-      renderJobs();
-      toast('All data replaced from backup');
     }
 
     function downloadFile(content, filename, type) {
@@ -3415,7 +4172,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.08b',
+      version: 'v2026.10.09',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
@@ -3436,6 +4193,7 @@
       getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length
     };
 
+    initPhotoUi();
     loadData();
     renderJobs();
   </script>
