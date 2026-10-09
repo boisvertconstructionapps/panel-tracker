@@ -139,7 +139,7 @@
     .card-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
     .card-sub { color: var(--text-dim); font-size: 0.88rem; }
 
-    .empty {
+    .empty:not(.slot) {
       text-align: center;
       padding: 60px 20px;
       color: var(--text-dim);
@@ -338,6 +338,7 @@
       height: 72px;
       min-height: 72px;
       max-height: 72px;
+      padding: 0;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -483,7 +484,8 @@
     .slot-num.hidden { display: none; }
 
     .breaker {
-      flex: 1;
+      flex: 1 1 auto;
+      align-self: stretch;
       background: var(--breaker-bg);
       padding: 14px 7px 6px;
       display: flex;
@@ -492,8 +494,11 @@
       cursor: grab;
       user-select: none;
       border-radius: 6px;
-      margin: 2px;
-      min-height: 58px;
+      margin: 0;
+      min-height: 0;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
       /* Allow vertical page scroll when finger starts on a breaker; drag takes over after long-press */
       touch-action: pan-y;
     }
@@ -508,6 +513,11 @@
     .breaker.dragging {
       opacity: 0.5;
       outline: 2px dashed var(--accent);
+    }
+    .breaker.drag-ghost {
+      height: auto;
+      max-height: none;
+      flex: none;
     }
 
     .breaker-content {
@@ -809,7 +819,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09b</span>
+      <span class="app-version" title="App version">v2026.10.09c</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -848,7 +858,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09b</span>
+      <span class="app-version">v2026.10.09c</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1518,9 +1528,15 @@
           firstSlot.appendChild(num);
         }
 
-        // Multi-pole spans rows in the same column — fixed heights so opposite column doesn't shrink them
-        if (span === 2) firstSlot.classList.add('span-2');
-        if (span === 3) firstSlot.classList.add('span-3');
+        // Span only rows that exist in this panel. A pole that would run past the
+        // last slot must not create an extra implicit grid row below the frame.
+        let rowsInPanel = 1;
+        for (let i = 1; i < usedSlots.length; i++) {
+          if (!slotMap[usedSlots[i]]) break;
+          rowsInPanel++;
+        }
+        if (rowsInPanel === 2) firstSlot.classList.add('span-2');
+        if (rowsInPanel >= 3) firstSlot.classList.add('span-3');
 
         const breakerEl = document.createElement('div');
         breakerEl.className = 'breaker' + (isTandem ? ' tandem' : '');
@@ -1925,10 +1941,10 @@
       showPreviewBanner(targetSlot, layout);
       if (layout && layout.ok) {
         applyPreviewTransforms(layout, breakerId);
-        highlightDropSlot(targetSlot, true);
+        highlightDropSlot(targetSlot, true, breakerId);
       } else {
         clearPreviewTransforms();
-        highlightDropSlot(targetSlot, false);
+        highlightDropSlot(targetSlot, false, breakerId);
       }
     }
 
@@ -1943,13 +1959,23 @@
       return computeColumnMove(source, panel.spaces || 30, breakerId, targetSlot);
     }
 
-    function highlightDropSlot(slotNum, ok) {
+    function highlightDropSlot(slotNum, ok, breakerId) {
       document.querySelectorAll('.slot.drop-target').forEach(s => s.classList.remove('drop-target', 'drop-invalid'));
-      const el = document.querySelector(`.slot[data-slot="${slotNum}"]`);
-      if (el) {
+      const panel = getPanel();
+      const id = breakerId || gBreakerId;
+      const mover = panel && id && (panel.breakers || []).find(b => b.id === id);
+      const span = mover ? spanOf(mover) : 1;
+      const nums = span > 1 ? slotsForBreaker(slotNum, span) : [slotNum];
+      const marked = new Set();
+      nums.forEach(n => {
+        if (marked.has(n)) return;
+        const el = document.querySelector(`#slots-grid .slot[data-slot="${n}"]`);
+        if (!el) return;
         el.classList.add('drop-target');
         if (ok === false) el.classList.add('drop-invalid');
-      }
+        const covered = el.classList.contains('span-3') ? 3 : el.classList.contains('span-2') ? 2 : 1;
+        for (let i = 0; i < covered; i++) marked.add(n + i * 2);
+      });
     }
 
     function showPreviewBanner(targetSlot, layout, extra) {
@@ -2198,10 +2224,11 @@
       startDragAutoScroll();
       toast('Drag to a slot — hold at top/bottom edge to scroll');
       const w = breakerEl ? breakerEl.offsetWidth : 120;
+      const h = breakerEl ? breakerEl.offsetHeight : 70;
       gGhost = document.createElement('div');
       gGhost.className = 'breaker drag-ghost';
       if (breakerEl) gGhost.innerHTML = breakerEl.innerHTML;
-      gGhost.style.cssText = `position:fixed;pointer-events:none;opacity:0.92;z-index:9998;width:${w}px;left:${gStartX - w / 2}px;top:${gStartY - 30}px;box-shadow:0 8px 24px rgba(0,0,0,0.45);border-radius:8px;background:#1e293b;border:1.5px solid #334155;`;
+      gGhost.style.cssText = `position:fixed;pointer-events:none;opacity:0.92;z-index:9998;width:${w}px;height:${h}px;left:${gStartX - w / 2}px;top:${gStartY - 30}px;box-shadow:0 8px 24px rgba(0,0,0,0.45);border-radius:8px;background:#1e293b;border:1.5px solid #334155;`;
       document.body.appendChild(gGhost);
       showPreviewBanner(gOriginSlot, null, 'Move finger — top bar shows where breakers will go');
     }
@@ -4259,7 +4286,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09b',
+      version: 'v2026.10.09c',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
