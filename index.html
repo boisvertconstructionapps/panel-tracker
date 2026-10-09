@@ -413,23 +413,35 @@
     .breaker.has-afci { border-left: 4px solid #1e3a8a; }
     .breaker.has-dual { border-left: 4px solid #7dd3fc; }
 
-    /* Area groups — color tint only, no layout effect */
-    .breaker.group-kitchen { background: linear-gradient(135deg, #3b2f1a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #f59e0b55; }
-    .breaker.group-basement { background: linear-gradient(135deg, #2a1f3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #a78bfa55; }
-    .breaker.group-laundry { background: linear-gradient(135deg, #1a2f28 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #34d39955; }
-    .breaker.group-mechanical { background: linear-gradient(135deg, #3b1a2a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #f472b655; }
-    .breaker.group-exterior { background: linear-gradient(135deg, #3b2a1a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #fb923c55; }
-    .breaker.group-garage { background: linear-gradient(135deg, #2a2f35 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #94a3b855; }
-    .breaker.group-mainfloor { background: linear-gradient(135deg, #1a2f3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #38bdf855; }
-    .breaker.group-1stfloor { background: linear-gradient(135deg, #1a3b2f 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #2dd4bf55; }
-    .breaker.group-2ndfloor { background: linear-gradient(135deg, #2f1a3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #c084fc55; }
-    .breaker.group-other { background: linear-gradient(135deg, #2a2a30 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #e2e8f055; }
+    /* Area group hues are injected from GROUP_COLORS (right-edge strip + tint). */
     .group-dot {
       display: inline-block;
-      width: 8px; height: 8px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
-      margin-right: 4px;
+      margin-right: 6px;
       vertical-align: middle;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+    }
+    .group-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-top: 8px;
+    }
+    .group-legend-item {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .group-legend-item.is-current {
+      color: var(--text);
+      font-weight: 700;
+    }
+    .breaker[class*="group-"] .tandem-half {
+      background: transparent;
     }
 
     .prot-badge {
@@ -797,7 +809,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09</span>
+      <span class="app-version" title="App version">v2026.10.09b</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -836,7 +848,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09</span>
+      <span class="app-version">v2026.10.09b</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1082,6 +1094,7 @@
           <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;">Move favorites to the top</div>
           <div id="group-order-list"></div>
         </div>
+        <div id="group-legend" class="group-legend"></div>
         <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Color-codes the breaker — does not change position</div>
       </div>
 
@@ -1520,10 +1533,8 @@
         if (b.gfci && b.afci) breakerEl.classList.add('has-dual');
         else if (b.gfci) breakerEl.classList.add('has-gfci');
         else if (b.afci) breakerEl.classList.add('has-afci');
-        if (b.group) {
-          const gClass = String(b.group).startsWith('other:') ? 'other' : b.group;
-          breakerEl.classList.add('group-' + gClass);
-        }
+        const gClass = groupKey(b.group);
+        if (gClass) breakerEl.classList.add('group-' + gClass);
 
         let badgeHtml = '';
         if (b.gfci && b.afci) badgeHtml = `<div class="prot-badge dual">DUAL</div>`;
@@ -1531,7 +1542,8 @@
         else if (b.afci) badgeHtml = `<div class="prot-badge afci">AFCI</div>`;
         const groupLabel = groupDisplayName(b.group);
         if (groupLabel) {
-          badgeHtml += `<div class="prot-badge" style="background:transparent;border:1px solid #475569;color:#cbd5e1;">${esc(groupLabel)}</div>`;
+          const dot = gClass ? `<span class="group-dot dot-${gClass}"></span>` : '';
+          badgeHtml += `<div class="prot-badge" style="background:transparent;border:1px solid #475569;color:#f8fafc;">${dot}${esc(groupLabel)}</div>`;
         }
 
         if (isTandem) {
@@ -2955,13 +2967,14 @@
       }
       const prot = [b.gfci ? 'GFCI' : '', b.afci ? 'AFCI' : ''].filter(Boolean).join(' + ');
       const grp = groupDisplayName(b.group) || '';
+      const groupId = groupKey(b.group);
       const notes = b.notes || '';
       if (b.tandem) {
         return {
           slot: b.slot, empty: false, tandem: true,
           name: `${b.nameA || ''} / ${b.nameB || ''}`,
           amps: `${b.ampsA || ''}/${b.ampsB || ''}`,
-          type: 'Tandem', prot, group: grp, notes,
+          type: 'Tandem', prot, group: grp, groupId, notes,
           lines: [
             { name: b.nameA || '', amps: b.ampsA || '' },
             { name: b.nameB || '', amps: b.ampsB || '' }
@@ -2978,7 +2991,7 @@
         return {
           slot, empty: false, continuation: true,
           name: b.name || '', amps: b.amps || '',
-          type: type + ' (cont.)', prot, group: grp, notes: '',
+          type: type + ' (cont.)', prot, group: grp, groupId, notes: '',
           lines: [{ name: b.name || '', amps: b.amps || '' }],
           slotLabel
         };
@@ -2986,7 +2999,7 @@
       return {
         slot: b.slot, empty: false,
         name: b.name || '', amps: b.amps || '',
-        type, prot, group: grp, notes,
+        type, prot, group: grp, groupId, notes,
         lines: [{ name: b.name || '', amps: b.amps || '' }],
         slotLabel
       };
@@ -3042,6 +3055,13 @@
           <tbody>
       `;
 
+      function cellStyle(c) {
+        if (!c || !c.groupId || !GROUP_COLORS[c.groupId]) return '';
+        const edge = GROUP_COLORS[c.groupId];
+        const bg = mixOver(edge, 0.24, '#ffffff');
+        return ` style="background:${bg};border-right:4px solid ${edge};color:#111;"`;
+      }
+
       function cellHtml(c) {
         if (!c || c.empty) return '<span class="empty">—</span>';
         // Meta line: protection + group only (pole count is obvious from layout)
@@ -3085,9 +3105,9 @@
           if (rs > 1) {
             left.rowSpan = rs;
             skipLeft = rs - 1;
-            leftTd = `<td class="multi-cell" rowspan="${rs}">${cellHtml(left)}</td>`;
+            leftTd = `<td class="multi-cell" rowspan="${rs}"${cellStyle(left)}>${cellHtml(left)}</td>`;
           } else {
-            leftTd = `<td>${cellHtml(left)}</td>`;
+            leftTd = `<td${cellStyle(left)}>${cellHtml(left)}</td>`;
           }
         } else {
           leftTd = '<td></td>';
@@ -3100,9 +3120,9 @@
           if (rs > 1) {
             right.rowSpan = rs;
             skipRight = rs - 1;
-            rightTd = `<td class="multi-cell" rowspan="${rs}">${cellHtml(right)}</td>`;
+            rightTd = `<td class="multi-cell" rowspan="${rs}"${cellStyle(right)}>${cellHtml(right)}</td>`;
           } else {
-            rightTd = `<td>${cellHtml(right)}</td>`;
+            rightTd = `<td${cellStyle(right)}>${cellHtml(right)}</td>`;
           }
         } else {
           rightTd = '<td></td>';
@@ -4010,6 +4030,19 @@
       setTimeout(() => t.classList.remove('show'), 2800);
     }
 
+    const GROUP_COLORS = {
+      kitchen: '#facc15',
+      exterior: '#22c55e',
+      basement: '#a855f7',
+      laundry: '#06b6d4',
+      mechanical: '#ef4444',
+      garage: '#9ca3af',
+      mainfloor: '#3b82f6',
+      '1stfloor': '#f97316',
+      '2ndfloor': '#ec4899',
+      other: '#a16207'
+    };
+
     const DEFAULT_GROUP_ORDER = [
       'kitchen', 'basement', 'laundry', 'mechanical',
       'exterior', 'garage', 'mainfloor', '1stfloor', '2ndfloor', 'other'
@@ -4021,6 +4054,45 @@
       mainfloor: 'Main floor', '1stfloor': '1st floor', '2ndfloor': '2nd floor',
       other: 'Other…'
     };
+
+    function hexToRgb(hex) {
+      const h = String(hex).replace('#', '');
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+
+    function mixOver(hex, amount, base) {
+      const a = hexToRgb(hex);
+      const b = hexToRgb(base);
+      const ch = i => Math.round(a[i] * amount + b[i] * (1 - amount));
+      const part = n => ch(n).toString(16).padStart(2, '0');
+      return '#' + part(0) + part(1) + part(2);
+    }
+
+    function groupKey(id) {
+      if (!id) return '';
+      const raw = String(id);
+      if (raw === 'other' || raw.startsWith('other:')) return 'other';
+      return GROUP_COLORS[raw] ? raw : '';
+    }
+
+    function installGroupColors() {
+      const base = '#1a1a24';
+      let css = '';
+      Object.keys(GROUP_COLORS).forEach(id => {
+        const hue = GROUP_COLORS[id];
+        const bg = mixOver(hue, 0.28, base);
+        css += '.breaker.group-' + id + ',.breaker.tandem.group-' + id + '{background:' + bg + ';color:#f8fafc;position:relative;padding-right:12px;}';
+        css += '.breaker.group-' + id + '::after{content:"";position:absolute;top:0;right:0;bottom:0;width:4px;background:' + hue + ';pointer-events:none;border-radius:0 6px 6px 0;}';
+        css += '.group-dot.dot-' + id + '{background:' + hue + ';}';
+      });
+      let tag = document.getElementById('group-color-css');
+      if (!tag) {
+        tag = document.createElement('style');
+        tag.id = 'group-color-css';
+        document.head.appendChild(tag);
+      }
+      tag.textContent = css;
+    }
 
     function getGroupOrder() {
       if (!data.groupOrder || !Array.isArray(data.groupOrder) || !data.groupOrder.length) {
@@ -4050,6 +4122,19 @@
       if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
       else if (prev === 'other' || String(prev).startsWith('other:')) sel.value = 'other';
       else sel.value = '';
+      renderGroupLegend();
+    }
+
+    function renderGroupLegend() {
+      const el = document.getElementById('group-legend');
+      const sel = document.getElementById('breaker-group');
+      if (!el || !sel) return;
+      const current = groupKey(sel.value);
+      el.innerHTML = getGroupOrder().map(id => `
+        <span class="group-legend-item${current === id ? ' is-current' : ''}">
+          <span class="group-dot dot-${id}"></span>${esc(GROUP_LABELS[id] || id)}
+        </span>
+      `).join('');
     }
 
     function toggleGroupOrderEditor() {
@@ -4066,6 +4151,7 @@
       const order = getGroupOrder();
       list.innerHTML = order.map((id, i) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #2e2e42;">
+          <span class="group-dot dot-${id}"></span>
           <span style="flex:1;font-size:0.9rem;">${esc(GROUP_LABELS[id] || id)}</span>
           <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},-1)" ${i===0?'disabled':''}>↑</button>
           <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},1)" ${i===order.length-1?'disabled':''}>↓</button>
@@ -4098,6 +4184,7 @@
       if (!sel || !custom) return;
       const isOther = sel.value === 'other' || String(sel.value).startsWith('other:');
       custom.style.display = isOther ? 'block' : 'none';
+      renderGroupLegend();
       if (isOther && String(sel.value).startsWith('other:') && !custom.value) {
         custom.value = String(sel.value).slice(6);
       }
@@ -4172,7 +4259,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09',
+      version: 'v2026.10.09b',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
@@ -4193,6 +4280,7 @@
       getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length
     };
 
+    installGroupColors();
     initPhotoUi();
     loadData();
     renderJobs();
