@@ -7,6 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#1a1a2e">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>Panel Tracker</title>
   <style>
@@ -407,6 +408,17 @@
       border-color: #93c5fd;
       box-shadow: 0 0 0 2px #1e40af;
     }
+    .spd-chip {
+      background: transparent;
+      color: #fbbf24;
+      border-color: #f59e0b;
+    }
+    .spd-chip:has(input:checked) {
+      background: #f59e0b;
+      color: #1c1917;
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 2px #b45309;
+    }
 
     /* Visual badges on breakers in the panel */
     /* Siemens test-button colors: White=GFCI, Dark Blue=AFCI, Light Blue=Dual */
@@ -466,6 +478,38 @@
     .prot-badge.dual {
       background: #7dd3fc;
       color: #0c4a6e;
+    }
+    .spd-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1.5px solid #f59e0b;
+      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.16);
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .feeds-badge {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      margin-top: 1px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid #38bdf8;
+      color: #7dd3fc;
+      background: rgba(14, 165, 233, 0.12);
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
     }
 
     .slot-num {
@@ -819,7 +863,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09c</span>
+      <span class="app-version" title="App version">v2026.10.09d</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -858,7 +902,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09c</span>
+      <span class="app-version">v2026.10.09d</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -991,6 +1035,8 @@
       <div class="form-group">
         <label>Number of Spaces</label>
         <select id="panel-spaces">
+          <option value="4">4</option>
+          <option value="8">8</option>
           <option value="12">12</option>
           <option value="16">16</option>
           <option value="20">20</option>
@@ -1048,7 +1094,7 @@
           <label>Breaker Name *</label>
           <input type="text" id="breaker-name" placeholder="e.g. Kitchen Lights">
         </div>
-        <div class="form-group">
+        <div class="form-group amps-field">
           <label>Amps</label>
           <input type="number" id="breaker-amps" placeholder="15, 20, 30..." value="20">
         </div>
@@ -1059,7 +1105,7 @@
           <label>Circuit A Name *</label>
           <input type="text" id="breaker-name-a" placeholder="e.g. Kitchen Lights">
         </div>
-        <div class="form-group">
+        <div class="form-group amps-field">
           <label>Circuit A Amps</label>
           <input type="number" id="breaker-amps-a" value="15">
         </div>
@@ -1067,7 +1113,7 @@
           <label>Circuit B Name *</label>
           <input type="text" id="breaker-name-b" placeholder="e.g. Bath Outlets">
         </div>
-        <div class="form-group">
+        <div class="form-group amps-field">
           <label>Circuit B Amps</label>
           <input type="number" id="breaker-amps-b" value="15">
         </div>
@@ -1082,9 +1128,13 @@
           <input type="checkbox" id="breaker-afci">
           <span>AFCI</span>
         </label>
+        <label class="prot-chip spd-chip" for="breaker-spd">
+          <input type="checkbox" id="breaker-spd" onchange="syncSpdUi()">
+          <span>⚡ SPD</span>
+        </label>
       </div>
       <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:12px;">
-        White = GFCI · Dark Blue = AFCI · Light Blue = Dual (both)
+        White = GFCI · Dark Blue = AFCI · Light Blue = Dual · Amber = SPD
       </div>
 
       <div class="form-group">
@@ -1109,8 +1159,16 @@
       </div>
 
       <div class="form-group">
-        <label>Notes</label>
-        <textarea id="breaker-notes" placeholder="Wire size, location, customer notes…" rows="2" style="min-height:56px;"></textarea>
+        <label>Feeds subpanel</label>
+        <select id="breaker-feeds">
+          <option value="">None</option>
+        </select>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Other panels in this job. The tile link opens that panel.</div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes / Fixtures</label>
+        <textarea id="breaker-notes" placeholder="Fixtures, outlets, wire size…" rows="2" style="min-height:56px;"></textarea>
         <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Shows on PDF / Excel</div>
       </div>
 
@@ -1436,6 +1494,7 @@
       const job = getCurrentJob();
       const removedId = editingPanelId;
       job.panels = job.panels.filter(p => p.id !== removedId);
+      sweepDanglingFeeds(job);
       saveData();
       const pendingPhotos = deletePhotosForPanels([removedId]);
       closeModal('panel');
@@ -1449,6 +1508,7 @@
     function renderPanelVisual() {
       const panel = getPanel();
       if (!panel) return;
+      if (sweepDanglingFeeds(getCurrentJob())) saveData();
 
       // Main breaker
       const mainEl = document.getElementById('main-breaker');
@@ -1562,30 +1622,47 @@
           badgeHtml += `<div class="prot-badge" style="background:transparent;border:1px solid #475569;color:#f8fafc;">${dot}${esc(groupLabel)}</div>`;
         }
 
+        const feedsHtml = feedsBadgeHtml(b);
+        const spdMark = '<span class="spd-badge">SPD</span>';
         if (isTandem) {
+          const ampsA = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsA || ''}A</div>`;
+          const ampsB = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsB || ''}A</div>`;
           breakerEl.innerHTML = `
             <div class="breaker-content tandem-split">
               ${badgeHtml ? `<div class="breaker-top">${badgeHtml}</div>` : ''}
               <div class="tandem-half">
-                <div class="breaker-amps">${b.ampsA || ''}A</div>
+                ${ampsA}
                 <div class="breaker-name">${esc(b.nameA || '')}</div>
               </div>
               <div class="tandem-half">
-                <div class="breaker-amps">${b.ampsB || ''}A</div>
+                ${ampsB}
                 <div class="breaker-name">${esc(b.nameB || '')}</div>
               </div>
+              ${feedsHtml}
             </div>
           `;
         } else {
+          const ampsHtml = b.spd ? spdMark : `<div class="breaker-amps">${b.amps || ''}A</div>`;
           breakerEl.innerHTML = `
             <div class="breaker-content">
               <div class="breaker-top">
-                <div class="breaker-amps">${b.amps || ''}A</div>
+                ${ampsHtml}
                 ${badgeHtml}
               </div>
+              ${feedsHtml}
               <div class="breaker-name">${esc(b.name || '')}</div>
             </div>
           `;
+        }
+
+        const feedEl = breakerEl.querySelector('.feeds-badge');
+        if (feedEl) {
+          feedEl.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
+          feedEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openFedPanel(feedEl.getAttribute('data-feeds'));
+          });
         }
 
         breakerEl.addEventListener('click', (e) => {
@@ -2520,7 +2597,9 @@
           document.getElementById('breaker-slot').value = b.slot;
           document.getElementById('breaker-gfci').checked = !!b.gfci;
           document.getElementById('breaker-afci').checked = !!b.afci;
+          document.getElementById('breaker-spd').checked = !!b.spd;
           document.getElementById('breaker-notes').value = b.notes || '';
+          fillFeedsPanelSelect(b.feedsPanelId || '');
           setSelectedGroupValue(b.group || '');
           if (b.tandem) {
             document.getElementById('breaker-name-a').value = b.nameA || '';
@@ -2537,7 +2616,9 @@
           document.getElementById('spaces-value').textContent = '1';
           document.getElementById('breaker-gfci').checked = false;
           document.getElementById('breaker-afci').checked = false;
+          document.getElementById('breaker-spd').checked = false;
           document.getElementById('breaker-name').value = '';
+          fillFeedsPanelSelect('');
           document.getElementById('breaker-amps').value = 20;
           document.getElementById('breaker-name-a').value = '';
           document.getElementById('breaker-amps-a').value = 15;
@@ -2603,6 +2684,90 @@
       const isTandem = document.getElementById('breaker-tandem').checked;
       document.getElementById('single-fields').style.display = isTandem ? 'none' : 'block';
       document.getElementById('tandem-fields').style.display = isTandem ? 'block' : 'none';
+      syncSpdUi();
+    }
+
+    function syncSpdUi() {
+      const on = !!document.getElementById('breaker-spd').checked;
+      document.querySelectorAll('.amps-field').forEach(el => {
+        el.style.display = on ? 'none' : '';
+      });
+      if (on) {
+        const name = document.getElementById('breaker-name');
+        if (name && !name.value.trim()) name.value = 'Whole House Surge Protector';
+      }
+    }
+
+    function fillFeedsPanelSelect(selectedId) {
+      const sel = document.getElementById('breaker-feeds');
+      if (!sel) return;
+      const job = getCurrentJob();
+      const panel = getPanel();
+      sel.innerHTML = '<option value="">None</option>';
+      ((job && job.panels) || []).forEach(p => {
+        if (!p || (panel && p.id === panel.id)) return;
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name || 'Panel';
+        sel.appendChild(opt);
+      });
+      if (selectedId && [...sel.options].some(o => o.value === selectedId)) sel.value = selectedId;
+      else sel.value = '';
+    }
+
+    function feedsPanelTarget(feedsPanelId) {
+      if (!feedsPanelId) return null;
+      const job = getCurrentJob();
+      return job && (job.panels || []).find(p => p.id === feedsPanelId) || null;
+    }
+
+    function feedsBadgeHtml(b) {
+      const target = b && feedsPanelTarget(b.feedsPanelId);
+      if (!target) return '';
+      return `<div class="feeds-badge" data-feeds="${esc(b.feedsPanelId)}">→ ${esc(target.name || 'Panel')}</div>`;
+    }
+
+    function openFedPanel(id) {
+      const target = feedsPanelTarget(id);
+      if (!target) {
+        const panel = getPanel();
+        if (panel) {
+          (panel.breakers || []).forEach(b => {
+            if (b && b.feedsPanelId === id) delete b.feedsPanelId;
+          });
+          saveData();
+          renderPanelVisual();
+        }
+        toast('That panel was removed');
+        return;
+      }
+      openPanel(target.id);
+    }
+
+    function sweepDanglingFeeds(job) {
+      if (!job) return false;
+      const ids = new Set((job.panels || []).map(p => p && p.id).filter(Boolean));
+      let changed = false;
+      (job.panels || []).forEach(p => {
+        (p.breakers || []).forEach(b => {
+          if (b && b.feedsPanelId && !ids.has(b.feedsPanelId)) {
+            delete b.feedsPanelId;
+            changed = true;
+          }
+        });
+      });
+      return changed;
+    }
+
+    function remapImportedFeeds(panels, panelMap) {
+      (panels || []).forEach(panel => {
+        (panel.breakers || []).forEach(b => {
+          if (!b || b.feedsPanelId == null || b.feedsPanelId === '') return;
+          const mapped = panelMap && panelMap[b.feedsPanelId];
+          if (mapped) b.feedsPanelId = mapped;
+          else delete b.feedsPanelId;
+        });
+      });
     }
 
     // Breakers ordered down the panel: left column top-to-bottom, then right (by slot number)
@@ -2684,7 +2849,9 @@
       vals.push(
         document.getElementById('breaker-tandem').checked ? '1' : '0',
         document.getElementById('breaker-gfci').checked ? '1' : '0',
-        document.getElementById('breaker-afci').checked ? '1' : '0'
+        document.getElementById('breaker-afci').checked ? '1' : '0',
+        document.getElementById('breaker-spd').checked ? '1' : '0',
+        document.getElementById('breaker-feeds') ? document.getElementById('breaker-feeds').value : ''
       );
       return vals.join('|');
     }
@@ -2797,6 +2964,8 @@
       }
       const gfci = document.getElementById('breaker-gfci').checked;
       const afci = document.getElementById('breaker-afci').checked;
+      const spd = !!document.getElementById('breaker-spd').checked;
+      const feedsPanelId = (document.getElementById('breaker-feeds').value || '').trim();
       const notes = document.getElementById('breaker-notes').value.trim();
       const group = getSelectedGroupValue();
       let payload;
@@ -2810,14 +2979,16 @@
         }
         payload = {
           tandem: true, nameA, nameB,
-          ampsA: parseInt(document.getElementById('breaker-amps-a').value, 10) || 15,
-          ampsB: parseInt(document.getElementById('breaker-amps-b').value, 10) || 15,
-          spaces: 1, slot, gfci, afci, notes, group,
+          ampsA: spd ? null : (parseInt(document.getElementById('breaker-amps-a').value, 10) || 15),
+          ampsB: spd ? null : (parseInt(document.getElementById('breaker-amps-b').value, 10) || 15),
+          spaces: 1, slot, gfci, afci, spd, notes, group,
+          feedsPanelId,
           name: '', amps: null
         };
       } else {
-        const name = document.getElementById('breaker-name').value.trim()
+        let name = document.getElementById('breaker-name').value.trim()
           || document.getElementById('breaker-name-a').value.trim();
+        if (spd && !name) name = 'Whole House Surge Protector';
         if (!name) {
           // Empty name on leave of a new empty form — just discard
           if (!editingBreakerId) {
@@ -2829,16 +3000,20 @@
         }
         payload = {
           tandem: false, name,
-          amps: parseInt(document.getElementById('breaker-amps').value, 10) || 20,
-          spaces, slot, gfci, afci, notes, group,
+          amps: spd ? null : (parseInt(document.getElementById('breaker-amps').value, 10) || 20),
+          spaces, slot, gfci, afci, spd, notes, group,
+          feedsPanelId,
           nameA: '', nameB: '', ampsA: null, ampsB: null
         };
       }
+      if (!payload.feedsPanelId) delete payload.feedsPanelId;
       pushUndo(editingBreakerId ? 'edit breaker' : 'add breaker');
       if (editingBreakerId) {
         const b = panel.breakers.find(x => x.id === editingBreakerId);
-        if (b) Object.assign(b, payload);
-        else panel.breakers.push({ id: editingBreakerId, ...payload });
+        if (b) {
+          Object.assign(b, payload);
+          if (!feedsPanelId) delete b.feedsPanelId;
+        } else panel.breakers.push({ id: editingBreakerId, ...payload });
       } else {
         const id = uid();
         panel.breakers.push({ id, ...payload });
@@ -2996,15 +3171,18 @@
       const grp = groupDisplayName(b.group) || '';
       const groupId = groupKey(b.group);
       const notes = b.notes || '';
+      const spd = !!b.spd;
+      const fed = feedsPanelTarget(b.feedsPanelId);
+      const feedsName = fed ? (fed.name || 'Panel') : '';
       if (b.tandem) {
         return {
-          slot: b.slot, empty: false, tandem: true,
+          slot: b.slot, empty: false, tandem: true, spd, feedsName,
           name: `${b.nameA || ''} / ${b.nameB || ''}`,
-          amps: `${b.ampsA || ''}/${b.ampsB || ''}`,
+          amps: spd ? 'SPD' : `${b.ampsA || ''}/${b.ampsB || ''}`,
           type: 'Tandem', prot, group: grp, groupId, notes,
           lines: [
-            { name: b.nameA || '', amps: b.ampsA || '' },
-            { name: b.nameB || '', amps: b.ampsB || '' }
+            { name: b.nameA || '', amps: spd ? 'SPD' : (b.ampsA || '') },
+            { name: b.nameB || '', amps: spd ? 'SPD' : (b.ampsB || '') }
           ]
         };
       }
@@ -3016,18 +3194,18 @@
       if (!isStart) {
         // Continuation of multi-pole in lower row — still mark occupied
         return {
-          slot, empty: false, continuation: true,
-          name: b.name || '', amps: b.amps || '',
+          slot, empty: false, continuation: true, spd,
+          name: b.name || '', amps: spd ? 'SPD' : (b.amps || ''),
           type: type + ' (cont.)', prot, group: grp, groupId, notes: '',
-          lines: [{ name: b.name || '', amps: b.amps || '' }],
+          lines: [{ name: b.name || '', amps: spd ? 'SPD' : (b.amps || '') }],
           slotLabel
         };
       }
       return {
-        slot: b.slot, empty: false,
-        name: b.name || '', amps: b.amps || '',
+        slot: b.slot, empty: false, spd, feedsName,
+        name: b.name || '', amps: spd ? 'SPD' : (b.amps || ''),
         type, prot, group: grp, groupId, notes,
-        lines: [{ name: b.name || '', amps: b.amps || '' }],
+        lines: [{ name: b.name || '', amps: spd ? 'SPD' : (b.amps || '') }],
         slotLabel
       };
     }
@@ -3089,21 +3267,32 @@
         return ` style="background:${bg};border-right:4px solid ${edge};color:#111;"`;
       }
 
+      function noteLine(c) {
+        const bits = [];
+        if (c.notes) bits.push(c.notes);
+        if (c.feedsName) bits.push('Feeds: ' + c.feedsName);
+        return bits.join(' · ');
+      }
+      function ampText(value, spdFlag) {
+        if (spdFlag || value === 'SPD') return 'SPD';
+        return esc(String(value)) + 'A';
+      }
       function cellHtml(c) {
         if (!c || c.empty) return '<span class="empty">—</span>';
         // Meta line: protection + group only (pole count is obvious from layout)
         const meta = [c.prot, c.group].filter(Boolean).join(' · ');
+        const notesHtml = noteLine(c) ? `<div class="sub">${esc(noteLine(c))}</div>` : '';
         if (c.tandem) {
           return c.lines.map(l =>
-            `<div class="tandem-line"><span class="amps">${esc(String(l.amps))}A</span> <span class="name">${esc(l.name)}</span></div>`
+            `<div class="tandem-line"><span class="amps">${ampText(l.amps, c.spd)}</span> <span class="name">${esc(l.name)}</span></div>`
           ).join('') +
             (meta ? `<div class="sub">${esc(meta)}</div>` : '') +
-            (c.notes ? `<div class="sub">${esc(c.notes)}</div>` : '');
+            notesHtml;
         }
-        return `<div class="amps">${esc(String(c.amps))}A</div>
+        return `<div class="amps">${ampText(c.amps, c.spd)}</div>
           <div class="name">${esc(c.name)}</div>
           ${meta ? `<div class="sub">${esc(meta)}</div>` : ''}
-          ${c.notes ? `<div class="sub">${esc(c.notes)}</div>` : ''}`;
+          ${notesHtml}`;
       }
 
       // Multi-pole spans down the column (odd slots or even slots). Track open rowspans.
@@ -3181,7 +3370,7 @@
       const panelName = panel.name || '';
 
       // Two-column layout; multi-pole listed once on start row with slot range; continuation rows blank circuit
-      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes,Job,Panel\n';
+      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel\n';
       if (panel.hasMain) {
         csv += `—,MAIN,${panel.mainAmps || ''},Main,,,,,——,,,,,,,"${jobName}","${panelName}"\n`;
       }
@@ -3972,6 +4161,8 @@
               clones.push(fresh);
             });
           });
+          remapImportedFeeds(clones, panelMap);
+          (data.jobs || []).forEach(sweepDanglingFeeds);
           const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
           saveData();
           closeImportOverlay();
@@ -3991,6 +4182,8 @@
           dest.panels.push(fresh);
           clones.push(fresh);
         });
+        remapImportedFeeds(clones, panelMap);
+        sweepDanglingFeeds(dest);
         const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
         saveData();
         currentJobId = dest.id;
@@ -4019,6 +4212,7 @@
         await clearAllPhotos();
         const allPanels = [];
         data.jobs.forEach(job => (job.panels || []).forEach(panel => allPanels.push(panel)));
+        (data.jobs || []).forEach(sweepDanglingFeeds);
         const restored = await applyImportedPhotos(photos, null, allPanels, false);
         saveData();
         currentJobId = null;
@@ -4286,7 +4480,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09c',
+      version: 'v2026.10.09d',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
