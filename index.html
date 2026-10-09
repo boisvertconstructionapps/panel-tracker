@@ -682,7 +682,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.08</span>
+      <span class="app-version" title="App version">v2026.10.08b</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -721,7 +721,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.08</span>
+      <span class="app-version">v2026.10.08b</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -749,7 +749,6 @@
       <button class="btn btn-sm" onclick="exportPanelPDF()">PDF</button>
       <button class="btn btn-sm" onclick="exportPanelExcel()">Excel</button>
       <button class="btn btn-sm" onclick="exportThisPanel()">Share panel</button>
-      <button class="btn btn-sm btn-primary" onclick="openBradyExport()">Brady M211</button>
     </div>
   </div>
 
@@ -765,18 +764,6 @@
       <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" id="btn-import-merge" onclick="confirmImportMerge()">Add to job (keep mine)</button>
       <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;display:none;" id="btn-import-replace" onclick="confirmImportReplace()">Replace ALL my data</button>
       <button class="btn btn-ghost" style="width:100%;" onclick="closeImportOverlay()">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Brady column picker -->
-  <div id="brady-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#1a1a24;border:1px solid #2e2e42;border-radius:14px;padding:20px;width:100%;max-width:340px;">
-      <div style="font-size:1.05rem;font-weight:600;margin-bottom:6px;">Brady M211 export</div>
-      <div style="font-size:0.85rem;color:#9a9ab0;margin-bottom:16px;">Which column of labels?</div>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="exportBrady('left')">Left column (odd slots)</button>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="exportBrady('right')">Right column (even slots)</button>
-      <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;" onclick="exportBrady('both')">Both columns (2 files)</button>
-      <button class="btn btn-ghost" style="width:100%;" onclick="closeBradyExport()">Cancel</button>
     </div>
   </div>
 
@@ -952,7 +939,7 @@
       <div class="form-group">
         <label>Notes</label>
         <textarea id="breaker-notes" placeholder="Wire size, location, customer notes…" rows="2" style="min-height:56px;"></textarea>
-        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Shows on PDF / Excel — not on Brady labels</div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Shows on PDF / Excel</div>
       </div>
 
       <div id="breaker-nav" style="display:none; align-items:center; justify-content:space-between; margin:12px 0; gap:8px;">
@@ -3023,67 +3010,6 @@
       toast('Excel/CSV downloaded (2-column layout)');
     }
 
-    function openBradyExport() {
-      if (!getPanel()) return;
-      const el = document.getElementById('brady-overlay');
-      if (el) el.style.display = 'flex';
-    }
-    function closeBradyExport() {
-      const el = document.getElementById('brady-overlay');
-      if (el) el.style.display = 'none';
-    }
-
-    // column: 'left' | 'right' | 'both'
-    // Brady Breaker Box treats each CSV row as one breaker device.
-    // Pole count is set in the app (Variable Pole Count) — we export Poles so you can match spacing.
-    // 2-pole = one row (one label), not two rows with the same name.
-    function exportBrady(column) {
-      const panel = getPanel();
-      if (!panel) return;
-      closeBradyExport();
-      const total = panel.spaces || 30;
-      const base = (panel.name || 'panel').replace(/[^a-z0-9]/gi, '_');
-
-      function buildColumnCsv(which) {
-        let csv = 'Slot,Circuit Name,Amps,Poles,Column\n';
-        const colLabel = which === 'left' ? 'Left' : 'Right';
-        for (let s = which === 'left' ? 1 : 2; s <= total; s += 2) {
-          const b = breakerAtSlot(panel, s);
-          if (!b) {
-            csv += `${s},,,1,${colLabel}\n`;
-            continue;
-          }
-          // Skip continuation poles of a multi-pole — only the start slot gets a label row
-          if (!b.tandem && b.slot !== s) continue;
-
-          if (b.tandem) {
-            // One physical 1-pole space, two circuits — two label lines (common for tandem)
-            csv += `${b.slot},"${(b.nameA || '').replace(/"/g, '""')}",${b.ampsA || ''},1,${colLabel}\n`;
-            csv += `${b.slot},"${(b.nameB || '').replace(/"/g, '""')}",${b.ampsB || ''},1,${colLabel}\n`;
-          } else {
-            const poles = b.spaces || 1;
-            const name = (b.name || '').replace(/"/g, '""');
-            csv += `${b.slot},"${name}",${b.amps || ''},${poles},${colLabel}\n`;
-          }
-        }
-        return csv;
-      }
-
-      if (column === 'left') {
-        downloadFile(buildColumnCsv('left'), `${base}_brady_LEFT.csv`, 'text/csv');
-        toast('Brady LEFT CSV ready (one row per breaker; Poles column for 2/3-pole)');
-      } else if (column === 'right') {
-        downloadFile(buildColumnCsv('right'), `${base}_brady_RIGHT.csv`, 'text/csv');
-        toast('Brady RIGHT CSV ready (one row per breaker; Poles column for 2/3-pole)');
-      } else {
-        downloadFile(buildColumnCsv('left'), `${base}_brady_LEFT.csv`, 'text/csv');
-        setTimeout(() => {
-          downloadFile(buildColumnCsv('right'), `${base}_brady_RIGHT.csv`, 'text/csv');
-          toast('Brady LEFT + RIGHT CSVs ready');
-        }, 400);
-      }
-    }
-
     function exportAllData() {
       downloadFile(JSON.stringify(data, null, 2), 'panel_tracker_backup.json', 'application/json');
       toast('Full backup downloaded');
@@ -3489,7 +3415,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.08',
+      version: 'v2026.10.08b',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
