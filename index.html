@@ -801,6 +801,29 @@
     }
     .toast.show { opacity: 1; }
 
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 10100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .confirm-overlay.open { display: flex; }
+    .confirm-card {
+      background: #1a1a24;
+      border: 1px solid #2e2e42;
+      border-radius: 14px;
+      padding: 18px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .confirm-card p { margin: 0; font-size: 1rem; line-height: 1.4; }
+    .confirm-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .confirm-actions .btn { flex: 1; min-height: 48px; }
+
     .photos-sheet {
       position: fixed;
       inset: 0;
@@ -940,7 +963,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09h</span>
+      <span class="app-version" title="App version">v2026.10.09i</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -957,7 +980,7 @@
   <!-- ========== JOB DETAIL ========== -->
   <div id="screen-job" class="screen">
     <div class="header">
-      <button class="btn btn-icon btn-ghost" onclick="showScreen('jobs')">←</button>
+      <button class="btn btn-icon btn-ghost" onclick="appBack()">←</button>
       <h1 id="job-title">Job</h1>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentJob()">Edit</button>
       <button class="btn btn-sm btn-primary" onclick="openPanelModal()">+ Panel</button>
@@ -977,9 +1000,9 @@
   <!-- ========== PANEL DETAIL ========== -->
   <div id="screen-panel" class="screen">
     <div class="header">
-      <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
+      <button class="btn btn-icon btn-ghost" onclick="appBack()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09h</span>
+      <span class="app-version">v2026.10.09i</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1278,6 +1301,16 @@
     </div>
   </div>
 
+  <div id="confirm-overlay" class="confirm-overlay">
+    <div class="confirm-card">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" onclick="answerConfirm(false)">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="answerConfirm(true)">OK</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
@@ -1326,6 +1359,334 @@
       return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     }
 
+    // ===================== IN-APP HISTORY =====================
+    // Android Back follows history. Root (jobs list) is replaceState'd onto the
+    // entry that loaded the app, so Back there still exits. Every deeper screen
+    // and overlay is its own pushState snapshot.
+    const OVERLAY_IDS = [
+      'modal-job', 'modal-panel', 'modal-breaker',
+      'photos-sheet', 'photo-viewer', 'import-overlay', 'confirm-overlay'
+    ];
+    let navStack = [];
+    let historyReady = false;
+    let navLock = 0;
+    let afterNav = null;
+    let confirmResolve = null;
+
+    function activeScreen() {
+      const el = document.querySelector('.screen.active');
+      return el ? el.id.replace('screen-', '') : 'jobs';
+    }
+
+    function overlayOpen(id) {
+      const el = document.getElementById(id);
+      if (!el) return false;
+      if (el.classList.contains('open')) return true;
+      const d = el.style.display;
+      return d === 'flex' || d === 'block';
+    }
+
+    function snapCopy(s) {
+      return {
+        pt: 1,
+        screen: s.screen,
+        jobId: s.jobId || null,
+        panelId: s.panelId || null,
+        overlays: (s.overlays || []).slice()
+      };
+    }
+
+    function captureSnapshot() {
+      const screen = activeScreen();
+      return {
+        pt: 1,
+        screen: screen,
+        jobId: screen === 'jobs' ? null : (currentJobId || null),
+        panelId: screen === 'panel' ? (currentPanelId || null) : null,
+        overlays: OVERLAY_IDS.filter(overlayOpen)
+      };
+    }
+
+    function sameSnap(a, b) {
+      if (!a || !b) return false;
+      if (a.screen !== b.screen) return false;
+      if ((a.jobId || null) !== (b.jobId || null)) return false;
+      if ((a.panelId || null) !== (b.panelId || null)) return false;
+      const ao = a.overlays || [];
+      const bo = b.overlays || [];
+      if (ao.length !== bo.length) return false;
+      for (let i = 0; i < ao.length; i++) if (ao[i] !== bo[i]) return false;
+      return true;
+    }
+
+    function overlaysPrefix(a, b) {
+      if (!a || !b || a.length > b.length) return false;
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+      return true;
+    }
+
+    function canGrow(from, to) {
+      if (!from || !to) return false;
+      if (from.screen === to.screen && (from.jobId || null) === (to.jobId || null) && (from.panelId || null) === (to.panelId || null)) {
+        return overlaysPrefix(from.overlays || [], to.overlays || []);
+      }
+      if ((from.overlays || []).length) return false;
+      if (from.screen === 'jobs' && to.screen === 'job' && to.jobId) return true;
+      if (from.screen === 'jobs' && to.screen === 'panel' && to.jobId && to.panelId) return true;
+      if (from.screen === 'job' && to.screen === 'panel' && from.jobId === to.jobId && to.panelId) return true;
+      if (from.screen === 'panel' && to.screen === 'panel' && from.jobId === to.jobId && to.panelId && from.panelId !== to.panelId) return true;
+      return false;
+    }
+
+    function planPushes(from, to) {
+      const steps = [];
+      let cursor = snapCopy(from);
+      if (cursor.screen !== to.screen || (cursor.jobId || null) !== (to.jobId || null) || (cursor.panelId || null) !== (to.panelId || null)) {
+        if (cursor.screen === 'jobs' && to.screen === 'panel') {
+          const jobStep = { pt: 1, screen: 'job', jobId: to.jobId, panelId: null, overlays: [] };
+          steps.push(jobStep);
+          cursor = jobStep;
+        }
+        const screenStep = {
+          pt: 1,
+          screen: to.screen,
+          jobId: to.jobId || null,
+          panelId: to.screen === 'panel' ? (to.panelId || null) : null,
+          overlays: []
+        };
+        if (!sameSnap(cursor, screenStep)) {
+          steps.push(screenStep);
+          cursor = screenStep;
+        }
+      }
+      const overlays = to.overlays || [];
+      for (let i = (cursor.overlays || []).length; i < overlays.length; i++) {
+        const step = {
+          pt: 1,
+          screen: to.screen,
+          jobId: to.jobId || null,
+          panelId: to.screen === 'panel' ? (to.panelId || null) : null,
+          overlays: overlays.slice(0, i + 1)
+        };
+        steps.push(step);
+        cursor = step;
+      }
+      return steps;
+    }
+
+    function pushSnap(snap) {
+      const copy = snapCopy(snap);
+      navStack.push(copy);
+      history.pushState(copy, '');
+    }
+
+    function settleHistory() {
+      return new Promise(resolve => {
+        if (!historyReady || navLock) { resolve(); return; }
+        const live = captureSnapshot();
+        const top = navStack[navStack.length - 1];
+        if (sameSnap(top, live)) { resolve(); return; }
+
+        let idx = -1;
+        for (let i = navStack.length - 1; i >= 0; i--) {
+          if (sameSnap(navStack[i], live) || canGrow(navStack[i], live)) { idx = i; break; }
+        }
+        if (idx < 0) idx = 0;
+        const delta = navStack.length - 1 - idx;
+        if (delta > 0) {
+          navStack.length = idx + 1;
+          navLock++;
+          afterNav = () => {
+            const now = captureSnapshot();
+            const cur = navStack[navStack.length - 1];
+            if (!sameSnap(cur, now)) {
+              if (canGrow(cur, now)) planPushes(cur, now).forEach(pushSnap);
+              else {
+                const replaced = snapCopy(now);
+                navStack[navStack.length - 1] = replaced;
+                history.replaceState(replaced, '');
+              }
+            }
+            resolve();
+          };
+          history.go(-delta);
+          return;
+        }
+        if (canGrow(top, live)) planPushes(top, live).forEach(pushSnap);
+        else {
+          const replaced = snapCopy(live);
+          navStack[navStack.length - 1] = replaced;
+          history.replaceState(replaced, '');
+        }
+        resolve();
+      });
+    }
+
+    function hideConfirmDom() {
+      const el = document.getElementById('confirm-overlay');
+      if (!el) return;
+      el.style.display = 'none';
+      el.classList.remove('open');
+    }
+
+    function hideOverlay(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'photo-viewer') {
+        if (el.classList.contains('open')) {
+          try { saveViewerCaption(); } catch (err) { console.warn(err); }
+        }
+        el.classList.remove('open');
+        if (viewerObjectUrl) {
+          URL.revokeObjectURL(viewerObjectUrl);
+          viewerObjectUrl = null;
+        }
+        const img = document.getElementById('photo-viewer-img');
+        if (img) img.removeAttribute('src');
+        return;
+      }
+      if (id === 'photos-sheet') {
+        el.classList.remove('open');
+        return;
+      }
+      if (id === 'import-overlay') {
+        el.style.display = 'none';
+        pendingImport = null;
+        return;
+      }
+      if (id === 'confirm-overlay') {
+        hideConfirmDom();
+        if (confirmResolve) {
+          const r = confirmResolve;
+          confirmResolve = null;
+          r(false);
+        }
+        return;
+      }
+      if (id === 'modal-job' || id === 'modal-panel' || id === 'modal-breaker') {
+        const wasBreaker = id === 'modal-breaker' && el.classList.contains('open');
+        el.classList.remove('open');
+        el.style.display = 'none';
+        if (wasBreaker) {
+          editingBreakerId = null;
+          breakerFormSnapshot = '';
+          if (activeScreen() === 'panel' && getPanel()) {
+            renderPanelVisual();
+            updateUndoButton();
+          }
+        }
+      }
+    }
+
+    function syncOverlays(wanted) {
+      const set = new Set(wanted || []);
+      for (let i = OVERLAY_IDS.length - 1; i >= 0; i--) {
+        const id = OVERLAY_IDS[i];
+        if (overlayOpen(id) && !set.has(id)) hideOverlay(id);
+      }
+    }
+
+    function applySnapshot(state) {
+      const screen = state.screen || 'jobs';
+      if (screen === 'job' && state.jobId && data.jobs.some(j => j.id === state.jobId)) {
+        openJob(state.jobId);
+      } else if (screen === 'panel' && state.jobId && state.panelId) {
+        currentJobId = state.jobId;
+        const panel = getPanelById(state.panelId);
+        if (panel) openPanel(state.panelId);
+        else if (data.jobs.some(j => j.id === state.jobId)) openJob(state.jobId);
+        else showScreen('jobs');
+      } else if (screen === 'jobs') {
+        showScreen('jobs');
+      } else if (screen === 'job') {
+        showScreen('jobs');
+      } else {
+        showScreen('jobs');
+      }
+      syncOverlays(state.overlays || []);
+    }
+
+    function getPanelById(panelId) {
+      const job = getCurrentJob();
+      return job ? (job.panels || []).find(p => p.id === panelId) : null;
+    }
+
+    function onPopState(ev) {
+      if (navLock) {
+        navLock--;
+        const cb = afterNav;
+        afterNav = null;
+        if (cb) cb();
+        return;
+      }
+      let state = ev.state;
+      if (!state || state.pt !== 1) {
+        state = { pt: 1, screen: 'jobs', jobId: null, panelId: null, overlays: [] };
+        navStack = [snapCopy(state)];
+        history.replaceState(navStack[0], '');
+      }
+      if (overlayOpen('modal-breaker') && (state.overlays || []).indexOf('modal-breaker') < 0) {
+        if (isBreakerFormDirty() && !saveBreakerQuiet()) {
+          const snap = captureSnapshot();
+          if (!sameSnap(navStack[navStack.length - 1], snap)) navStack.push(snapCopy(snap));
+          history.pushState(navStack[navStack.length - 1], '');
+          return;
+        }
+      }
+      navLock++;
+      try {
+        applySnapshot(state);
+      } finally {
+        navLock--;
+      }
+      const live = captureSnapshot();
+      const landed = sameSnap(live, state) ? state : live;
+      let found = -1;
+      for (let i = navStack.length - 1; i >= 0; i--) {
+        if (sameSnap(navStack[i], landed)) { found = i; break; }
+      }
+      if (found >= 0) navStack.length = found + 1;
+      else navStack.push(snapCopy(landed));
+      if (!sameSnap(live, state)) history.replaceState(navStack[navStack.length - 1], '');
+    }
+
+    function initAppHistory() {
+      const snap = { pt: 1, screen: 'jobs', jobId: null, panelId: null, overlays: [] };
+      navStack = [snap];
+      if (history.scrollRestoration) history.scrollRestoration = 'manual';
+      history.replaceState(snap, '');
+      historyReady = true;
+      window.addEventListener('popstate', onPopState);
+    }
+
+    function appBack() {
+      if (!historyReady) return;
+      const top = navStack[navStack.length - 1];
+      if (!top || (top.screen === 'jobs' && !(top.overlays && top.overlays.length))) return;
+      history.back();
+    }
+
+    function appConfirm(message) {
+      return new Promise(resolve => {
+        const el = document.getElementById('confirm-overlay');
+        const msg = document.getElementById('confirm-message');
+        if (msg) msg.textContent = message;
+        if (el) {
+          el.style.display = 'flex';
+          el.classList.add('open');
+        }
+        confirmResolve = resolve;
+        settleHistory();
+      });
+    }
+
+    function answerConfirm(ok) {
+      hideConfirmDom();
+      const resolve = confirmResolve;
+      confirmResolve = null;
+      Promise.resolve(settleHistory()).then(() => { if (resolve) resolve(!!ok); });
+    }
+
     // ===================== NAVIGATION =====================
     function showScreen(name) {
       if (name !== 'panel') closePhotoUi();
@@ -1337,6 +1698,7 @@
     function backToJob() {
       showScreen('job');
       renderPanels();
+      settleHistory();
     }
 
     // ===================== JOBS =====================
@@ -1372,6 +1734,7 @@
       document.getElementById('job-contact').textContent = contactStr;
       showScreen('job');
       renderPanels();
+      settleHistory();
     }
 
     function openJobModal(editId = null) {
@@ -1396,6 +1759,7 @@
         const modal = document.getElementById('modal-job');
         modal.classList.add('open');
         modal.style.display = 'flex';
+        settleHistory();
       } catch (err) {
         alert('Error opening form: ' + err.message);
       }
@@ -1427,25 +1791,28 @@
         });
       }
       saveData();
-      closeModal('job');
+      hideOverlay('modal-job');
       if (editingJobId && currentJobId === editingJobId) {
         openJob(editingJobId);
       } else {
         renderJobs();
+        settleHistory();
       }
       toast('Job saved');
     }
 
-    function deleteJob() {
-      if (!confirm('Delete this job and all its panels and photos?')) return;
+    async function deleteJob() {
+      if (!editingJobId) return;
+      if (!await appConfirm('Delete this job and all its panels and photos?')) return;
       const job = data.jobs.find(j => j.id === editingJobId);
       const panelIds = (job && job.panels ? job.panels : []).map(p => p.id);
       data.jobs = data.jobs.filter(j => j.id !== editingJobId);
       saveData();
       const pendingPhotos = deletePhotosForPanels(panelIds);
-      closeModal('job');
+      hideOverlay('modal-job');
       showScreen('jobs');
       toast('Job deleted');
+      await settleHistory();
       return pendingPhotos;
     }
 
@@ -1519,6 +1886,7 @@
       renderPanelVisual();
       updateUndoButton();
       refreshPhotoButton();
+      settleHistory();
     }
 
     function getPanel() {
@@ -1549,6 +1917,7 @@
         fillLugsFeedSelect('');
       }
       document.getElementById('modal-panel').classList.add('open');
+      settleHistory();
     }
 
     function editCurrentPanel() {
@@ -1594,27 +1963,30 @@
         job.panels.push(created);
       }
       saveData();
-      closeModal('panel');
+      hideOverlay('modal-panel');
       if (editingPanelId && currentPanelId === editingPanelId) {
         openPanel(editingPanelId);
       } else {
         renderPanels();
+        settleHistory();
       }
       toast('Panel saved');
     }
 
-    function deletePanel() {
-      if (!confirm('Delete this panel, its breakers, and its photos?')) return;
+    async function deletePanel() {
+      if (!editingPanelId) return;
+      if (!await appConfirm('Delete this panel, its breakers, and its photos?')) return;
       const job = getCurrentJob();
       const removedId = editingPanelId;
       job.panels = job.panels.filter(p => p.id !== removedId);
       sweepDanglingFeeds(job);
       saveData();
       const pendingPhotos = deletePhotosForPanels([removedId]);
-      closeModal('panel');
+      hideOverlay('modal-panel');
       showScreen('job');
       renderPanels();
       toast('Panel deleted');
+      await settleHistory();
       return pendingPhotos;
     }
 
@@ -2989,6 +3361,7 @@
         modal.classList.add('open');
         modal.style.display = 'flex';
         updateBreakerNav();
+        settleHistory();
         // snapshot after fields are filled
         setTimeout(() => { breakerFormSnapshot = snapshotBreakerForm(); }, 50);
       } catch (err) {
@@ -3556,8 +3929,9 @@
       toast('Breaker saved');
     }
 
-    function deleteBreaker() {
-      if (!confirm('Delete this breaker?')) return;
+    async function deleteBreaker() {
+      if (!editingBreakerId) return;
+      if (!await appConfirm('Delete this breaker?')) return;
       const panel = getPanel();
       if (!panel) return;
       pushUndo('delete breaker');
@@ -4121,6 +4495,7 @@
       const sheet = document.getElementById('photos-sheet');
       if (!sheet) return;
       sheet.classList.add('open');
+      settleHistory();
       try {
         await renderPhotoSheet();
       } catch (err) {
@@ -4130,13 +4505,14 @@
     }
 
     function closePhotosSheet() {
-      const sheet = document.getElementById('photos-sheet');
-      if (sheet) sheet.classList.remove('open');
-      closePhotoViewer();
+      hideOverlay('photo-viewer');
+      hideOverlay('photos-sheet');
+      settleHistory();
     }
 
     function closePhotoUi() {
-      closePhotosSheet();
+      hideOverlay('photo-viewer');
+      hideOverlay('photos-sheet');
     }
 
     async function addPanelPhotos(event) {
@@ -4147,6 +4523,7 @@
       if (!panelId || !getPanel() || !files.length) return;
       if (!document.getElementById('photos-sheet').classList.contains('open')) {
         document.getElementById('photos-sheet').classList.add('open');
+        settleHistory();
       }
       setPhotoSaving(true, 'Saving…');
       let saved = 0;
@@ -4214,20 +4591,15 @@
     function openPhotoViewer(index) {
       const viewer = document.getElementById('photo-viewer');
       if (!viewer) return;
+      const already = viewer.classList.contains('open');
       viewer.classList.add('open');
       showPhotoAt(index, { skipSave: true });
+      if (!already) settleHistory();
     }
 
     function closePhotoViewer() {
-      const viewer = document.getElementById('photo-viewer');
-      if (viewer && viewer.classList.contains('open')) saveViewerCaption();
-      if (viewer) viewer.classList.remove('open');
-      if (viewerObjectUrl) {
-        URL.revokeObjectURL(viewerObjectUrl);
-        viewerObjectUrl = null;
-      }
-      const img = document.getElementById('photo-viewer-img');
-      if (img) img.removeAttribute('src');
+      hideOverlay('photo-viewer');
+      settleHistory();
     }
 
     function stepPhoto(delta) {
@@ -4283,7 +4655,7 @@
     async function deleteViewerPhoto() {
       const rec = panelPhotoCache[photoViewerIndex];
       if (!rec) return;
-      if (!confirm('Delete this photo?')) return;
+      if (!await appConfirm('Delete this photo?')) return;
       try {
         await deletePhotoById(rec.id);
         const panel = getPanel();
@@ -4573,12 +4945,12 @@
         sel.appendChild(opt);
       }
       overlay.style.display = 'flex';
+      settleHistory();
     }
 
     function closeImportOverlay() {
-      const el = document.getElementById('import-overlay');
-      if (el) el.style.display = 'none';
-      pendingImport = null;
+      hideOverlay('import-overlay');
+      settleHistory();
     }
 
     function clonePanelFresh(p) {
@@ -4651,10 +5023,11 @@
           (data.jobs || []).forEach(sweepDanglingFeeds);
           const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
           saveData();
-          closeImportOverlay();
+          hideOverlay('import-overlay');
           showScreen('jobs');
           renderJobs();
           toast('Merged — your existing jobs/panels were kept' + photoToastSuffix(restored));
+          await settleHistory();
           return;
         }
         const dest = ensureImportJob(jobId);
@@ -4672,10 +5045,8 @@
         sweepDanglingFeeds(dest);
         const restored = await applyImportedPhotos(n.photos, panelMap, clones, true);
         saveData();
-        currentJobId = dest.id;
-        closeImportOverlay();
-        showScreen('job');
-        renderPanels();
+        hideOverlay('import-overlay');
+        openJob(dest.id);
         toast('Panel added to “' + dest.name + '”' + photoToastSuffix(restored));
       } catch (err) {
         console.warn(err);
@@ -4686,7 +5057,7 @@
     async function confirmImportReplace() {
       const n = pendingImport;
       if (!n || n.kind !== 'backup' || !n.raw) return;
-      if (!confirm('This deletes ALL your current jobs, panels, and photos. Continue?')) return;
+      if (!await appConfirm('This deletes ALL your current jobs, panels, and photos. Continue?')) return;
       try {
         const photos = n.photos || [];
         data = n.raw;
@@ -4703,10 +5074,11 @@
         saveData();
         currentJobId = null;
         currentPanelId = null;
-        closeImportOverlay();
+        hideOverlay('import-overlay');
         showScreen('jobs');
         renderJobs();
         toast('All data replaced from backup' + photoToastSuffix(restored));
+        await settleHistory();
       } catch (err) {
         console.warn(err);
         toast('Import failed');
@@ -4725,9 +5097,8 @@
 
     // ===================== HELPERS =====================
     function closeModal(name) {
-      const modal = document.getElementById('modal-' + name);
-      modal.classList.remove('open');
-      modal.style.display = 'none';
+      hideOverlay('modal-' + name);
+      settleHistory();
     }
 
     function toast(msg) {
@@ -4954,9 +5325,14 @@
         if (e.target !== ov) return;
         if (ov.id === 'modal-breaker') {
           closeBreakerModal();
+        } else if (ov.id === 'modal-job') {
+          closeModal('job');
+        } else if (ov.id === 'modal-panel') {
+          closeModal('panel');
         } else {
           ov.classList.remove('open');
           ov.style.display = 'none';
+          settleHistory();
         }
       });
     });
@@ -4966,7 +5342,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09h',
+      version: 'v2026.10.09i',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
@@ -4987,7 +5363,8 @@
       moveBreakerToSlot,
       getDragSnapshot: () => dragSnapshot,
       setDragSnapshot: (s) => { dragSnapshot = s; },
-      getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length
+      getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length,
+      getNav: () => navStack.map(snapCopy)
     };
 
     initAmpGrids();
@@ -4995,6 +5372,23 @@
     initPhotoUi();
     loadData();
     renderJobs();
+    initAppHistory();
+    (function isolateHistoryOverlays() {
+      isolatePhotoTouches(document.getElementById('confirm-overlay'));
+      isolatePhotoTouches(document.getElementById('import-overlay'));
+      const confirmOv = document.getElementById('confirm-overlay');
+      if (confirmOv) {
+        confirmOv.addEventListener('click', function (e) {
+          if (e.target === confirmOv) answerConfirm(false);
+        });
+      }
+      const importOv = document.getElementById('import-overlay');
+      if (importOv) {
+        importOv.addEventListener('click', function (e) {
+          if (e.target === importOv) closeImportOverlay();
+        });
+      }
+    })();
   </script>
   <script>
     if ('serviceWorker' in navigator) {
