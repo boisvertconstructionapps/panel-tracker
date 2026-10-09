@@ -1,0 +1,3528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Panel Tracker</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #242433;
+      --border: #2e2e42;
+      --text: #e8e8f0;
+      --text-dim: #9a9ab0;
+      --accent: #3b82f6;
+      --accent-dim: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --main-on: #22c55e;
+      --main-off: #64748b;
+      --slot-bg: #16161f;
+      --breaker-bg: #2a2a3d;
+      --tandem-bg: #1e3a5f;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      line-height: 1.4;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 56px;
+    }
+
+    .header h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-version {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 8px;
+      flex-shrink: 0;
+      letter-spacing: 0.02em;
+    }
+
+    .breaker.preview-shift {
+      transition: transform 0.12s ease-out;
+      z-index: 6;
+      pointer-events: none;
+      box-shadow: 0 0 0 2px #38bdf8aa;
+      border-radius: 6px;
+    }
+    .breaker.preview-shift.preview-mover {
+      opacity: 0.35;
+    }
+    .slot.drop-target.drop-invalid {
+      outline-color: #ef4444;
+      background: #3b1a1a;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--surface2);
+      color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+      min-height: 42px;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:active { background: var(--accent-dim); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); }
+    .btn-sm { padding: 7px 11px; font-size: 0.85rem; min-height: 34px; }
+    .btn-icon { width: 42px; padding: 0; font-size: 1.2rem; }
+
+    /* Screens */
+    .screen { display: none; min-height: calc(100dvh - 56px); padding-bottom: 120px; }
+    .screen.active { display: block; }
+
+    /* Lists */
+    .list { padding: 12px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .card:active { border-color: var(--accent); }
+    .card-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+    .card-sub { color: var(--text-dim); font-size: 0.88rem; }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+    .empty p { margin-top: 8px; font-size: 0.95rem; }
+
+    /* Floating action */
+    .fab {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      right: 20px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-size: 1.8rem;
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.45);
+      z-index: 999;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .fab:active { transform: scale(0.94); }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 80px; resize: vertical; }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+    }
+    .form-row .form-group { flex: 1; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex !important; }
+    .modal {
+      background: #1a1a24;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 20px 18px 30px;
+      border: 1px solid #2e2e42;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .modal-header h2 { font-size: 1.2rem; color: #e8e8f0; }
+
+    /* Panel visual */
+    .panel-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 56px;
+      z-index: 40;
+    }
+
+    .panel-container {
+      padding: 16px 12px 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .panel-box {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      width: 100%;
+      max-width: 380px;
+      transition: transform 0.2s ease;
+      transform-origin: top center;
+    }
+
+    .panel-box.flipped {
+      /* flip handled together with zoom in JS */
+    }
+
+    .panel-box.flipped .breaker-content,
+    .panel-box.flipped .main-breaker-label,
+    .panel-box.flipped .slot-num {
+      transform: rotate(180deg);
+    }
+
+    .main-breaker {
+      background: var(--slot-bg);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .main-breaker.hidden { display: none; }
+
+    .main-breaker-label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .main-handle {
+      width: 48px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--main-off);
+      position: relative;
+      transition: background 0.2s;
+    }
+    .main-handle.on { background: var(--main-on); }
+    .main-handle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 4px;
+      top: 4px;
+      left: 4px;
+      transition: left 0.2s;
+    }
+    .main-handle.on::after { left: 24px; }
+
+    .slots-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-auto-rows: 72px;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .slot {
+      background: var(--slot-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      height: 72px;
+      min-height: 72px;
+      max-height: 72px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .slot.span-2 {
+      height: 150px; /* 72+6+72 */
+      min-height: 150px;
+      max-height: 150px;
+      grid-row: span 2;
+    }
+    .slot.span-3 {
+      height: 228px; /* 72+6+72+6+72 */
+      min-height: 228px;
+      max-height: 228px;
+      grid-row: span 3;
+    }
+
+    .slot.empty {
+      border-style: dashed;
+      opacity: 0.7;
+      cursor: pointer;
+    }
+    .slot.drop-target {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      background: #1e3a5f;
+      opacity: 1;
+    }
+    .slot.empty:active {
+      background: #1e293b;
+      opacity: 1;
+    }
+
+    /* Protection chips (Siemens colors) */
+    .prot-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      user-select: none;
+      border: 2px solid transparent;
+    }
+    .prot-chip input { width: 18px; height: 18px; accent-color: currentColor; }
+    .gfci-chip {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+    .gfci-chip:has(input:checked) {
+      background: #ffffff;
+      border-color: #ffffff;
+      box-shadow: 0 0 0 2px #cbd5e1;
+    }
+    .afci-chip {
+      background: #1e3a8a;
+      color: #e0e7ff;
+      border-color: #1e3a8a;
+    }
+    .afci-chip:has(input:checked) {
+      background: #1e3a8a;
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 2px #1e40af;
+    }
+
+    /* Visual badges on breakers in the panel */
+    /* Siemens test-button colors: White=GFCI, Dark Blue=AFCI, Light Blue=Dual */
+    .breaker.has-gfci { border-left: 4px solid #ffffff; }
+    .breaker.has-afci { border-left: 4px solid #1e3a8a; }
+    .breaker.has-dual { border-left: 4px solid #7dd3fc; }
+
+    /* Area groups — color tint only, no layout effect */
+    .breaker.group-kitchen { background: linear-gradient(135deg, #3b2f1a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #f59e0b55; }
+    .breaker.group-basement { background: linear-gradient(135deg, #2a1f3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #a78bfa55; }
+    .breaker.group-laundry { background: linear-gradient(135deg, #1a2f28 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #34d39955; }
+    .breaker.group-mechanical { background: linear-gradient(135deg, #3b1a2a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #f472b655; }
+    .breaker.group-exterior { background: linear-gradient(135deg, #3b2a1a 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #fb923c55; }
+    .breaker.group-garage { background: linear-gradient(135deg, #2a2f35 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #94a3b855; }
+    .breaker.group-mainfloor { background: linear-gradient(135deg, #1a2f3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #38bdf855; }
+    .breaker.group-1stfloor { background: linear-gradient(135deg, #1a3b2f 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #2dd4bf55; }
+    .breaker.group-2ndfloor { background: linear-gradient(135deg, #2f1a3b 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #c084fc55; }
+    .breaker.group-other { background: linear-gradient(135deg, #2a2a30 0%, #1a1a24 55%); box-shadow: inset 0 0 0 1px #e2e8f055; }
+    .group-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .prot-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-top: 3px;
+      letter-spacing: 0.02em;
+    }
+    .prot-badge.gfci {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #cbd5e1;
+    }
+    .prot-badge.afci {
+      background: #1e3a8a;
+      color: #ffffff;
+    }
+    .prot-badge.dual {
+      background: #7dd3fc;
+      color: #0c4a6e;
+    }
+
+    .slot-num {
+      position: absolute;
+      top: 3px;
+      left: 5px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      z-index: 2;
+      background: rgba(0,0,0,0.4);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .slot-num.hidden { display: none; }
+
+    .breaker {
+      flex: 1;
+      background: var(--breaker-bg);
+      padding: 14px 7px 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      cursor: grab;
+      user-select: none;
+      border-radius: 6px;
+      margin: 2px;
+      min-height: 58px;
+      /* Allow vertical page scroll when finger starts on a breaker; drag takes over after long-press */
+      touch-action: pan-y;
+    }
+    .breaker.dragging {
+      touch-action: none;
+    }
+
+    .breaker.tandem {
+      background: var(--tandem-bg);
+    }
+
+    .breaker.dragging {
+      opacity: 0.5;
+      outline: 2px dashed var(--accent);
+    }
+
+    .breaker-content {
+      text-align: left;
+      pointer-events: none;
+      width: 100%;
+    }
+
+    .breaker-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+
+    .breaker-amps {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      white-space: nowrap;
+    }
+
+    .breaker-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      line-height: 1.15;
+      word-break: break-word;
+      color: #f1f5f9;
+    }
+
+    .breaker.span-2 {
+      grid-row: span 2;
+    }
+    .breaker.span-3 {
+      grid-row: span 3;
+    }
+
+    /* Multi-pole visual linking */
+    .slot.occupied-by-multi {
+      border-color: transparent;
+      background: transparent;
+    }
+
+    /* Compact tandem: both circuits visible in one 72px slot */
+    .breaker.tandem {
+      min-height: 0;
+      overflow: hidden;
+    }
+    .tandem-split {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      height: 100%;
+      min-height: 0;
+    }
+    .tandem-split .breaker-top {
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+    .tandem-half {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      min-height: 0;
+      flex-shrink: 1;
+    }
+    .tandem-half .breaker-amps {
+      font-size: 0.65rem;
+      flex-shrink: 0;
+      min-width: 2.2em;
+    }
+    .tandem-half .breaker-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Space controls in modal */
+    .space-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 8px 12px;
+      width: fit-content;
+    }
+    .space-control button {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: none;
+      background: var(--border);
+      color: var(--text);
+      font-size: 1.4rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .space-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .locked-banner {
+      background: var(--warning);
+      color: #111;
+      text-align: center;
+      padding: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+    }
+    .locked-banner.show { display: block; }
+
+    /* Export buttons */
+    .export-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 45;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      z-index: 300;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      border: 1px solid var(--border);
+      max-width: 90%;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; }
+
+    .contact-btn {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        color: black;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ========== JOBS LIST ========== -->
+  <div id="screen-jobs" class="screen active">
+    <div class="header">
+      <h1>Panel Tracker</h1>
+      <span class="app-version" title="App version">v2026.10.08</span>
+      <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
+      <button class="btn btn-sm btn-primary" onclick="openJobModal()">+ Job</button>
+    </div>
+    <div class="list" id="jobs-list"></div>
+    <div class="empty" id="jobs-empty" style="display:none;">
+      <div style="font-size:2.5rem;">⚡</div>
+      <p>No jobs yet.<br>Tap <b>+ Job</b> above to create one.</p>
+    </div>
+    <button class="fab" onclick="openJobModal()">+</button>
+  </div>
+
+  <!-- ========== JOB DETAIL ========== -->
+  <div id="screen-job" class="screen">
+    <div class="header">
+      <button class="btn btn-icon btn-ghost" onclick="showScreen('jobs')">←</button>
+      <h1 id="job-title">Job</h1>
+      <button class="btn btn-sm btn-ghost" onclick="editCurrentJob()">Edit</button>
+      <button class="btn btn-sm btn-primary" onclick="openPanelModal()">+ Panel</button>
+    </div>
+    <div style="padding:14px 16px; border-bottom:1px solid var(--border);">
+      <div class="card-sub" id="job-address"></div>
+      <div class="card-sub" id="job-contact" style="margin-top:4px;"></div>
+    </div>
+    <div class="list" id="panels-list"></div>
+    <div class="empty" id="panels-empty" style="display:none;">
+      <div style="font-size:2rem;">🔌</div>
+      <p>No panels yet.<br>Tap <b>+ Panel</b> above to add one.</p>
+    </div>
+    <button class="fab" onclick="openPanelModal()">+</button>
+  </div>
+
+  <!-- ========== PANEL DETAIL ========== -->
+  <div id="screen-panel" class="screen">
+    <div class="header">
+      <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
+      <h1 id="panel-title">Panel</h1>
+      <span class="app-version">v2026.10.08</span>
+      <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
+    </div>
+
+    <div class="locked-banner" id="locked-banner">🔒 Placement Locked</div>
+
+    <div class="panel-toolbar">
+      <button class="btn btn-sm" id="btn-numbers" onclick="toggleNumbers()"># Numbers</button>
+      <button class="btn btn-sm" id="btn-flip" onclick="toggleFlip()">↕ Flip</button>
+      <button class="btn btn-sm" id="btn-lock" onclick="toggleLock()">🔒 Lock</button>
+      <button class="btn btn-sm" id="btn-undo" onclick="undoLastChange()" disabled title="Undo last change">↩ Undo</button>
+      <button class="btn btn-sm btn-primary" onclick="openBreakerModal()">+ Breaker</button>
+    </div>
+
+    <div class="panel-container">
+      <div class="panel-box" id="panel-box">
+        <div class="main-breaker" id="main-breaker" onclick="toggleMainBreaker()">
+          <span class="main-breaker-label">MAIN</span>
+          <div class="main-handle" id="main-handle"></div>
+        </div>
+        <div class="slots-grid" id="slots-grid"></div>
+      </div>
+    </div>
+
+    <div class="export-bar">
+      <button class="btn btn-sm" onclick="exportPanelPDF()">PDF</button>
+      <button class="btn btn-sm" onclick="exportPanelExcel()">Excel</button>
+      <button class="btn btn-sm" onclick="exportThisPanel()">Share panel</button>
+      <button class="btn btn-sm btn-primary" onclick="openBradyExport()">Brady M211</button>
+    </div>
+  </div>
+
+  <!-- Import merge picker -->
+  <div id="import-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:flex-end;justify-content:center;padding:12px;">
+    <div style="background:#1a1a24;border:1px solid #2e2e42;border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:85vh;overflow:auto;">
+      <div style="font-size:1.05rem;font-weight:600;margin-bottom:6px;" id="import-title">Import</div>
+      <div style="font-size:0.85rem;color:#9a9ab0;margin-bottom:12px;" id="import-summary"></div>
+      <div class="form-group" id="import-job-wrap">
+        <label>Add panel(s) to this job</label>
+        <select id="import-target-job"></select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" id="btn-import-merge" onclick="confirmImportMerge()">Add to job (keep mine)</button>
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;display:none;" id="btn-import-replace" onclick="confirmImportReplace()">Replace ALL my data</button>
+      <button class="btn btn-ghost" style="width:100%;" onclick="closeImportOverlay()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Brady column picker -->
+  <div id="brady-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#1a1a24;border:1px solid #2e2e42;border-radius:14px;padding:20px;width:100%;max-width:340px;">
+      <div style="font-size:1.05rem;font-weight:600;margin-bottom:6px;">Brady M211 export</div>
+      <div style="font-size:0.85rem;color:#9a9ab0;margin-bottom:16px;">Which column of labels?</div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="exportBrady('left')">Left column (odd slots)</button>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="exportBrady('right')">Right column (even slots)</button>
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;" onclick="exportBrady('both')">Both columns (2 files)</button>
+      <button class="btn btn-ghost" style="width:100%;" onclick="closeBradyExport()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ========== JOB MODAL ========== -->
+  <div class="modal-overlay" id="modal-job">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="job-modal-title">New Job</h2>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal('job')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Job Name *</label>
+        <input type="text" id="job-name" placeholder="e.g. Smith Residence">
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="job-address-input" placeholder="Street, City">
+      </div>
+      <div class="form-group">
+        <label>Customer / Contact</label>
+        <input type="text" id="job-contact-name" placeholder="Name">
+        <button class="btn btn-sm contact-btn" onclick="pickContact()" id="btn-pick-contact">📱 Import from Contacts</button>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="job-phone" placeholder="Phone number">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="job-notes" placeholder="Optional notes"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveJob()">Save</button>
+        <button class="btn btn-danger btn-sm" id="btn-delete-job" style="display:none;" onclick="deleteJob()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PANEL MODAL ========== -->
+  <div class="modal-overlay" id="modal-panel">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="panel-modal-title">New Panel</h2>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal('panel')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Panel Name *</label>
+        <input type="text" id="panel-name" placeholder="e.g. Main Panel, Garage Sub">
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="panel-is-sub">
+        <label for="panel-is-sub" style="margin:0;">This is a Subpanel</label>
+      </div>
+      <div class="form-group">
+        <label>Number of Spaces</label>
+        <select id="panel-spaces">
+          <option value="12">12</option>
+          <option value="16">16</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+          <option value="30" selected>30</option>
+          <option value="40">40</option>
+          <option value="42">42</option>
+          <option value="48">48</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="panel-has-main" checked>
+        <label for="panel-has-main" style="margin:0;">Has Main Breaker</label>
+      </div>
+      <div class="form-group">
+        <label>Main Breaker Amps (if applicable)</label>
+        <input type="number" id="panel-main-amps" placeholder="e.g. 200" value="200">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="panel-notes" placeholder="Location, brand, etc."></textarea>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="savePanel()">Save</button>
+        <button class="btn btn-danger btn-sm" id="btn-delete-panel" style="display:none;" onclick="deletePanel()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== BREAKER MODAL ========== -->
+  <div class="modal-overlay" id="modal-breaker">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="breaker-modal-title">Add Breaker</h2>
+        <button class="btn btn-sm btn-ghost" onclick="closeBreakerModal()">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>Size (spaces)</label>
+        <div class="space-control">
+          <button type="button" onclick="changeSpaces(-1)">−</button>
+          <span class="space-value" id="spaces-value">1</span>
+          <button type="button" onclick="changeSpaces(1)">+</button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-dim);margin-top:6px;">
+          − from 1 = Tandem · + = more poles down the column
+        </div>
+      </div>
+
+      <input type="checkbox" id="breaker-tandem" style="display:none;">
+
+      <div id="single-fields">
+        <div class="form-group">
+          <label>Breaker Name *</label>
+          <input type="text" id="breaker-name" placeholder="e.g. Kitchen Lights">
+        </div>
+        <div class="form-group">
+          <label>Amps</label>
+          <input type="number" id="breaker-amps" placeholder="15, 20, 30..." value="20">
+        </div>
+      </div>
+
+      <div id="tandem-fields" style="display:none;">
+        <div class="form-group">
+          <label>Circuit A Name *</label>
+          <input type="text" id="breaker-name-a" placeholder="e.g. Kitchen Lights">
+        </div>
+        <div class="form-group">
+          <label>Circuit A Amps</label>
+          <input type="number" id="breaker-amps-a" value="15">
+        </div>
+        <div class="form-group">
+          <label>Circuit B Name *</label>
+          <input type="text" id="breaker-name-b" placeholder="e.g. Bath Outlets">
+        </div>
+        <div class="form-group">
+          <label>Circuit B Amps</label>
+          <input type="number" id="breaker-amps-b" value="15">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin: 12px 0 16px; flex-wrap:wrap;">
+        <label class="prot-chip gfci-chip" for="breaker-gfci">
+          <input type="checkbox" id="breaker-gfci">
+          <span>GFCI</span>
+        </label>
+        <label class="prot-chip afci-chip" for="breaker-afci">
+          <input type="checkbox" id="breaker-afci">
+          <span>AFCI</span>
+        </label>
+      </div>
+      <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:12px;">
+        White = GFCI · Dark Blue = AFCI · Light Blue = Dual (both)
+      </div>
+
+      <div class="form-group">
+        <label>Starting Slot</label>
+        <select id="breaker-slot"></select>
+      </div>
+
+      <div class="form-group">
+        <label>Group (area)
+          <button type="button" class="btn btn-sm btn-ghost" style="float:right;padding:2px 8px;font-size:0.75rem;" onclick="toggleGroupOrderEditor()">Reorder</button>
+        </label>
+        <select id="breaker-group" onchange="onBreakerGroupChange()">
+          <option value="">None</option>
+        </select>
+        <input type="text" id="breaker-group-custom" placeholder="Custom group name" style="display:none;margin-top:8px;">
+        <div id="group-order-editor" style="display:none;margin-top:10px;border:1px solid var(--border,#2e2e42);border-radius:10px;padding:8px;">
+          <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;">Move favorites to the top</div>
+          <div id="group-order-list"></div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Color-codes the breaker — does not change position</div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="breaker-notes" placeholder="Wire size, location, customer notes…" rows="2" style="min-height:56px;"></textarea>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Shows on PDF / Excel — not on Brady labels</div>
+      </div>
+
+      <div id="breaker-nav" style="display:none; align-items:center; justify-content:space-between; margin:12px 0; gap:8px;">
+        <button class="btn btn-sm btn-ghost" type="button" id="btn-prev-breaker" onclick="navBreaker(-1)">← Prev</button>
+        <span id="breaker-nav-label" style="font-size:0.8rem;color:var(--text-dim);"></span>
+        <button class="btn btn-sm btn-ghost" type="button" id="btn-next-breaker" onclick="navBreaker(1)">Next →</button>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:20px; flex-direction:row;">
+        <button class="btn btn-danger" style="flex:0 0 auto; min-width:90px; display:none;" id="btn-delete-breaker" onclick="deleteBreaker()">Delete</button>
+        <button class="btn btn-ghost" style="flex:1;" onclick="closeBreakerModal()">Done</button>
+      </div>
+      <div style="font-size:0.72rem;color:var(--text-dim);margin-top:8px;text-align:center;">Changes auto-save · use Undo on the panel if needed</div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Hidden print area -->
+  <div id="print-area" style="display:none;"></div>
+
+  <script>
+    // ===================== DATA =====================
+    let data = { jobs: [] };
+    let currentJobId = null;
+    let currentPanelId = null;
+    let editingJobId = null;
+    let editingPanelId = null;
+    let editingBreakerId = null;
+    let currentSpaces = 1;
+
+    // Load / Save
+    function loadData() {
+      try {
+        const raw = localStorage.getItem('panelTrackerData');
+        if (raw) data = JSON.parse(raw);
+      } catch (e) { console.warn(e); }
+    }
+    function saveData() {
+      localStorage.setItem('panelTrackerData', JSON.stringify(data));
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // ===================== NAVIGATION =====================
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+      if (name === 'jobs') renderJobs();
+    }
+
+    function backToJob() {
+      showScreen('job');
+      renderPanels();
+    }
+
+    // ===================== JOBS =====================
+    function renderJobs() {
+      const list = document.getElementById('jobs-list');
+      const empty = document.getElementById('jobs-empty');
+      list.innerHTML = '';
+      if (data.jobs.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      data.jobs.slice().reverse().forEach(job => {
+        const panelCount = job.panels ? job.panels.length : 0;
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.onclick = () => openJob(job.id);
+        div.innerHTML = `
+          <div class="card-title">${esc(job.name)}</div>
+          <div class="card-sub">${esc(job.address || 'No address')} · ${panelCount} panel${panelCount !== 1 ? 's' : ''}</div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function openJob(id) {
+      currentJobId = id;
+      const job = data.jobs.find(j => j.id === id);
+      if (!job) return;
+      document.getElementById('job-title').textContent = job.name;
+      document.getElementById('job-address').textContent = job.address || '';
+      const contactStr = [job.contactName, job.phone].filter(Boolean).join(' · ');
+      document.getElementById('job-contact').textContent = contactStr;
+      showScreen('job');
+      renderPanels();
+    }
+
+    function openJobModal(editId = null) {
+      try {
+        editingJobId = editId;
+        document.getElementById('job-modal-title').textContent = editId ? 'Edit Job' : 'New Job';
+        document.getElementById('btn-delete-job').style.display = editId ? 'block' : 'none';
+        if (editId) {
+          const job = data.jobs.find(j => j.id === editId);
+          document.getElementById('job-name').value = job.name || '';
+          document.getElementById('job-address-input').value = job.address || '';
+          document.getElementById('job-contact-name').value = job.contactName || '';
+          document.getElementById('job-phone').value = job.phone || '';
+          document.getElementById('job-notes').value = job.notes || '';
+        } else {
+          document.getElementById('job-name').value = '';
+          document.getElementById('job-address-input').value = '';
+          document.getElementById('job-contact-name').value = '';
+          document.getElementById('job-phone').value = '';
+          document.getElementById('job-notes').value = '';
+        }
+        const modal = document.getElementById('modal-job');
+        modal.classList.add('open');
+        modal.style.display = 'flex';
+      } catch (err) {
+        alert('Error opening form: ' + err.message);
+      }
+    }
+
+    function editCurrentJob() {
+      openJobModal(currentJobId);
+    }
+
+    function saveJob() {
+      const name = document.getElementById('job-name').value.trim();
+      if (!name) { toast('Job name required'); return; }
+      const payload = {
+        name,
+        address: document.getElementById('job-address-input').value.trim(),
+        contactName: document.getElementById('job-contact-name').value.trim(),
+        phone: document.getElementById('job-phone').value.trim(),
+        notes: document.getElementById('job-notes').value.trim()
+      };
+      if (editingJobId) {
+        const job = data.jobs.find(j => j.id === editingJobId);
+        Object.assign(job, payload);
+      } else {
+        data.jobs.push({
+          id: uid(),
+          ...payload,
+          panels: [],
+          created: Date.now()
+        });
+      }
+      saveData();
+      closeModal('job');
+      if (editingJobId && currentJobId === editingJobId) {
+        openJob(editingJobId);
+      } else {
+        renderJobs();
+      }
+      toast('Job saved');
+    }
+
+    function deleteJob() {
+      if (!confirm('Delete this job and all its panels?')) return;
+      data.jobs = data.jobs.filter(j => j.id !== editingJobId);
+      saveData();
+      closeModal('job');
+      showScreen('jobs');
+      toast('Job deleted');
+    }
+
+    // Contact Picker
+    async function pickContact() {
+      if (!('contacts' in navigator && 'ContactsManager' in window)) {
+        toast('Contacts API not supported on this browser. Enter manually.');
+        return;
+      }
+      try {
+        const contacts = await navigator.contacts.select(['name', 'tel', 'address'], { multiple: false });
+        if (contacts && contacts.length > 0) {
+          const c = contacts[0];
+          if (c.name && c.name.length) {
+            document.getElementById('job-contact-name').value = Array.isArray(c.name) ? c.name[0] : c.name;
+          }
+          if (c.tel && c.tel.length) {
+            document.getElementById('job-phone').value = Array.isArray(c.tel) ? c.tel[0] : c.tel;
+          }
+          if (c.address && c.address.length) {
+            const addr = Array.isArray(c.address) ? c.address[0] : c.address;
+            if (typeof addr === 'string') {
+              document.getElementById('job-address-input').value = addr;
+            } else if (addr.addressLine) {
+              document.getElementById('job-address-input').value = addr.addressLine.join(', ');
+            }
+          }
+          toast('Contact imported');
+        }
+      } catch (err) {
+        console.warn(err);
+        toast('Could not access contacts. Enter manually.');
+      }
+    }
+
+    // ===================== PANELS =====================
+    function getCurrentJob() {
+      return data.jobs.find(j => j.id === currentJobId);
+    }
+
+    function renderPanels() {
+      const job = getCurrentJob();
+      if (!job) return;
+      const list = document.getElementById('panels-list');
+      const empty = document.getElementById('panels-empty');
+      list.innerHTML = '';
+      if (!job.panels || job.panels.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      job.panels.forEach(panel => {
+        const breakerCount = panel.breakers ? panel.breakers.length : 0;
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.onclick = () => openPanel(panel.id);
+        div.innerHTML = `
+          <div class="card-title">${esc(panel.name)} ${panel.isSubpanel ? '<span style="color:var(--warning);font-size:0.8rem;">SUB</span>' : ''}</div>
+          <div class="card-sub">${panel.spaces} spaces · ${breakerCount} breaker${breakerCount !== 1 ? 's' : ''}${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ''}</div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function openPanel(id) {
+      currentPanelId = id;
+      const panel = getPanel();
+      if (!panel) return;
+      document.getElementById('panel-title').textContent = panel.name;
+      showScreen('panel');
+      renderPanelVisual();
+      updateUndoButton();
+    }
+
+    function getPanel() {
+      const job = getCurrentJob();
+      return job ? job.panels.find(p => p.id === currentPanelId) : null;
+    }
+
+    function openPanelModal(editId = null) {
+      editingPanelId = editId;
+      document.getElementById('panel-modal-title').textContent = editId ? 'Edit Panel' : 'New Panel';
+      document.getElementById('btn-delete-panel').style.display = editId ? 'block' : 'none';
+      if (editId) {
+        const p = getCurrentJob().panels.find(x => x.id === editId);
+        document.getElementById('panel-name').value = p.name || '';
+        document.getElementById('panel-is-sub').checked = !!p.isSubpanel;
+        document.getElementById('panel-spaces').value = p.spaces || 30;
+        document.getElementById('panel-has-main').checked = p.hasMain !== false;
+        document.getElementById('panel-main-amps').value = p.mainAmps || 200;
+        document.getElementById('panel-notes').value = p.notes || '';
+      } else {
+        document.getElementById('panel-name').value = '';
+        document.getElementById('panel-is-sub').checked = false;
+        document.getElementById('panel-spaces').value = 30;
+        document.getElementById('panel-has-main').checked = true;
+        document.getElementById('panel-main-amps').value = 200;
+        document.getElementById('panel-notes').value = '';
+      }
+      document.getElementById('modal-panel').classList.add('open');
+    }
+
+    function editCurrentPanel() {
+      openPanelModal(currentPanelId);
+    }
+
+    function savePanel() {
+      const name = document.getElementById('panel-name').value.trim();
+      if (!name) { toast('Panel name required'); return; }
+      const job = getCurrentJob();
+      const payload = {
+        name,
+        isSubpanel: document.getElementById('panel-is-sub').checked,
+        spaces: parseInt(document.getElementById('panel-spaces').value, 10),
+        hasMain: document.getElementById('panel-has-main').checked,
+        mainAmps: parseInt(document.getElementById('panel-main-amps').value, 10) || null,
+        mainOn: true,
+        notes: document.getElementById('panel-notes').value.trim(),
+        showNumbers: true,
+        flipped: false,
+        locked: false
+      };
+      if (editingPanelId) {
+        const p = job.panels.find(x => x.id === editingPanelId);
+        // Preserve breakers and state that shouldn't reset
+        Object.assign(p, payload, {
+          breakers: p.breakers || [],
+          mainOn: p.mainOn !== false,
+          showNumbers: p.showNumbers !== false,
+          flipped: !!p.flipped,
+          locked: !!p.locked
+        });
+      } else {
+        job.panels.push({
+          id: uid(),
+          ...payload,
+          breakers: [],
+          created: Date.now()
+        });
+      }
+      saveData();
+      closeModal('panel');
+      if (editingPanelId && currentPanelId === editingPanelId) {
+        openPanel(editingPanelId);
+      } else {
+        renderPanels();
+      }
+      toast('Panel saved');
+    }
+
+    function deletePanel() {
+      if (!confirm('Delete this panel and all breakers?')) return;
+      const job = getCurrentJob();
+      job.panels = job.panels.filter(p => p.id !== editingPanelId);
+      saveData();
+      closeModal('panel');
+      showScreen('job');
+      renderPanels();
+      toast('Panel deleted');
+    }
+
+    // ===================== PANEL VISUAL =====================
+    function renderPanelVisual() {
+      const panel = getPanel();
+      if (!panel) return;
+
+      // Main breaker
+      const mainEl = document.getElementById('main-breaker');
+      const handle = document.getElementById('main-handle');
+      if (panel.hasMain) {
+        mainEl.classList.remove('hidden');
+        handle.classList.toggle('on', panel.mainOn !== false);
+        document.querySelector('.main-breaker-label').textContent = 
+          panel.mainAmps ? `MAIN ${panel.mainAmps}A` : 'MAIN';
+      } else {
+        mainEl.classList.add('hidden');
+      }
+
+      // Toolbar state
+      document.getElementById('btn-numbers').textContent = panel.showNumbers !== false ? '# Numbers ✓' : '# Numbers';
+      document.getElementById('btn-flip').textContent = panel.flipped ? '↕ Flip ✓' : '↕ Flip';
+      document.getElementById('btn-lock').textContent = panel.locked ? '🔓 Unlock' : '🔒 Lock';
+      document.getElementById('locked-banner').classList.toggle('show', !!panel.locked);
+
+      const box = document.getElementById('panel-box');
+      box.classList.toggle('flipped', !!panel.flipped);
+
+      // Build slots
+      // Standard residential: two columns, odd left / even right, top to bottom
+      // We number 1..N left column first then right, or interleave.
+      // Common US style: left column 1,3,5... right 2,4,6...
+      const spaces = panel.spaces || 30;
+      const half = Math.ceil(spaces / 2);
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = '';
+
+      // Create slot placeholders first (in visual order: left col top-bottom, right col top-bottom)
+      // But number them in typical odd/even fashion.
+      const slotMap = {}; // slotNumber -> DOM element
+
+      for (let row = 0; row < half; row++) {
+        // Left column (odd numbers typically)
+        const leftNum = row * 2 + 1;
+        if (leftNum <= spaces) {
+          const slot = createSlotEl(leftNum, panel);
+          grid.appendChild(slot);
+          slotMap[leftNum] = slot;
+        }
+        // Right column (even)
+        const rightNum = row * 2 + 2;
+        if (rightNum <= spaces) {
+          const slot = createSlotEl(rightNum, panel);
+          grid.appendChild(slot);
+          slotMap[rightNum] = slot;
+        }
+      }
+
+      // Place breakers
+      if (!panel.breakers) panel.breakers = [];
+      // Sort by starting slot
+      const sorted = panel.breakers.slice().sort((a, b) => a.slot - b.slot);
+
+      sorted.forEach(b => {
+        const start = b.slot;
+        const span = b.spaces || 1;
+        const isTandem = !!b.tandem;
+
+        // Find the first slot element
+        const firstSlot = slotMap[start];
+        if (!firstSlot) return;
+
+        const usedSlots = isTandem ? [start] : slotsForBreaker(start, span);
+        const endSlot = usedSlots[usedSlots.length - 1];
+
+        // Clear and fill starting slot
+        firstSlot.classList.remove('empty');
+        firstSlot.innerHTML = '';
+        if (panel.showNumbers !== false) {
+          const num = document.createElement('div');
+          num.className = 'slot-num';
+          num.textContent = span > 1 ? `${start}–${endSlot}` : String(start);
+          firstSlot.appendChild(num);
+        }
+
+        // Multi-pole spans rows in the same column — fixed heights so opposite column doesn't shrink them
+        if (span === 2) firstSlot.classList.add('span-2');
+        if (span === 3) firstSlot.classList.add('span-3');
+
+        const breakerEl = document.createElement('div');
+        breakerEl.className = 'breaker' + (isTandem ? ' tandem' : '');
+        breakerEl.dataset.id = b.id;
+        if (span > 1) breakerEl.style.flex = '1';
+        if (!panel.locked) {
+          breakerEl.addEventListener('touchstart', onBreakerTouchStart, { passive: true });
+        }
+
+        if (b.gfci && b.afci) breakerEl.classList.add('has-dual');
+        else if (b.gfci) breakerEl.classList.add('has-gfci');
+        else if (b.afci) breakerEl.classList.add('has-afci');
+        if (b.group) {
+          const gClass = String(b.group).startsWith('other:') ? 'other' : b.group;
+          breakerEl.classList.add('group-' + gClass);
+        }
+
+        let badgeHtml = '';
+        if (b.gfci && b.afci) badgeHtml = `<div class="prot-badge dual">DUAL</div>`;
+        else if (b.gfci) badgeHtml = `<div class="prot-badge gfci">GFCI</div>`;
+        else if (b.afci) badgeHtml = `<div class="prot-badge afci">AFCI</div>`;
+        const groupLabel = groupDisplayName(b.group);
+        if (groupLabel) {
+          badgeHtml += `<div class="prot-badge" style="background:transparent;border:1px solid #475569;color:#cbd5e1;">${esc(groupLabel)}</div>`;
+        }
+
+        if (isTandem) {
+          breakerEl.innerHTML = `
+            <div class="breaker-content tandem-split">
+              ${badgeHtml ? `<div class="breaker-top">${badgeHtml}</div>` : ''}
+              <div class="tandem-half">
+                <div class="breaker-amps">${b.ampsA || ''}A</div>
+                <div class="breaker-name">${esc(b.nameA || '')}</div>
+              </div>
+              <div class="tandem-half">
+                <div class="breaker-amps">${b.ampsB || ''}A</div>
+                <div class="breaker-name">${esc(b.nameB || '')}</div>
+              </div>
+            </div>
+          `;
+        } else {
+          breakerEl.innerHTML = `
+            <div class="breaker-content">
+              <div class="breaker-top">
+                <div class="breaker-amps">${b.amps || ''}A</div>
+                ${badgeHtml}
+              </div>
+              <div class="breaker-name">${esc(b.name || '')}</div>
+            </div>
+          `;
+        }
+
+        breakerEl.addEventListener('click', (e) => {
+          if (panel.locked) return;
+          if (gestureMode === 'drag' || dragBreakerId) return;
+          if (Date.now() < suppressClickUntil) return;
+          e.stopPropagation();
+          openBreakerModal(b.id);
+        });
+
+        firstSlot.appendChild(breakerEl);
+
+        // Remove lower same-column slots from grid so the start slot can span their rows
+        for (let i = 1; i < usedSlots.length; i++) {
+          const next = slotMap[usedSlots[i]];
+          if (next && next.parentNode) {
+            next.parentNode.removeChild(next);
+            delete slotMap[usedSlots[i]];
+          }
+        }
+      });
+
+      applyPanelTransform();
+      initPanelPinch();
+    }
+
+    function createSlotEl(num, panel) {
+      const slot = document.createElement('div');
+      slot.className = 'slot empty';
+      slot.dataset.slot = num;
+      if (panel.showNumbers !== false) {
+        const n = document.createElement('div');
+        n.className = 'slot-num';
+        n.textContent = num;
+        slot.appendChild(n);
+      }
+      // Tap empty slot to add a breaker
+      slot.addEventListener('click', () => {
+        if (panel.locked) {
+          toast('Unlock the panel first');
+          return;
+        }
+        openBreakerModal(null, num);
+      });
+      return slot;
+    }
+
+    // Drag (touch long-press). dragBreakerId kept for click-suppress checks.
+    let dragBreakerId = null;
+
+    function spanOf(b) {
+      return b.tandem ? 1 : (b.spaces || 1);
+    }
+
+    // ---- Collision detection helpers ----
+    // Returns sorted list of physical slot numbers a breaker occupies
+    function occupiedSlots(start, span) {
+      return slotsForBreaker(start, span || 1);
+    }
+
+    // True if two slot ranges share any physical space
+    function rangesOverlap(aStart, aSpan, bStart, bSpan) {
+      const a = occupiedSlots(aStart, aSpan);
+      const bSet = new Set(occupiedSlots(bStart, bSpan));
+      return a.some(n => bSet.has(n));
+    }
+
+    // Map slot number → breaker id from a slots map { id: startSlot }
+    function buildOccupancy(slotsMap, source, ignoreIds) {
+      const map = new Map(); // slot → id
+      const ignore = ignoreIds || new Set();
+      for (const b of source) {
+        if (ignore.has(b.id)) continue;
+        const start = slotsMap[b.id];
+        if (start == null) continue;
+        for (const n of occupiedSlots(start, b.span)) {
+          if (map.has(n) && map.get(n) !== b.id) {
+            // collision already present
+            map.set(n, map.get(n) + '|' + b.id);
+          } else {
+            map.set(n, b.id);
+          }
+        }
+      }
+      return map;
+    }
+
+    // Find first free start slot in column for a span, at or after minStart
+    function findFreeStartInColumn(occupancy, totalSpaces, col, span, minStart) {
+      let s = minStart;
+      if ((s % 2) !== col) s++;
+      while (s + (span - 1) * 2 <= totalSpaces) {
+        const range = occupiedSlots(s, span);
+        if (range.every(n => n <= totalSpaces && (n % 2) === col && !occupancy.has(n))) {
+          return s;
+        }
+        s += 2;
+      }
+      return null;
+    }
+
+    // Validate no two breakers share a slot; returns list of colliding slot numbers
+    function findCollisions(slotsMap, source) {
+      const seen = new Map();
+      const hits = [];
+      for (const b of source) {
+        const start = slotsMap[b.id];
+        if (start == null) continue;
+        for (const n of occupiedSlots(start, b.span)) {
+          if (seen.has(n)) hits.push({ slot: n, a: seen.get(n), b: b.id });
+          else seen.set(n, b.id);
+        }
+      }
+      return hits;
+    }
+
+    function computeMoveLayout(panel, breakerId, targetSlot) {
+      const source = (panel.breakers || []).map(b => ({
+        id: b.id,
+        slot: b.slot,
+        span: spanOf(b),
+        tandem: !!b.tandem
+      }));
+      return computeColumnMove(source, panel.spaces || 30, breakerId, targetSlot);
+    }
+
+    // Move breaker to target: only push breakers that collide (cascade down one step at a time).
+    // Empty gaps stay empty. Nothing teleports upward / wrap-to-top. Multi-pole may change columns.
+    function columnHasEmptySlot(source, totalSpaces, col) {
+      const occ = new Set();
+      for (const b of source) {
+        for (const n of occupiedSlots(b.slot, b.span)) {
+          if ((n % 2) === col) occ.add(n);
+        }
+      }
+      for (let s = (col === 1 ? 1 : 2); s <= totalSpaces; s += 2) {
+        if (!occ.has(s)) return true;
+      }
+      return false;
+    }
+
+    function computeColumnMove(source, totalSpaces, breakerId, targetSlot) {
+      if (targetSlot < 1 || targetSlot > totalSpaces) return { ok: false };
+      const mover = source.find(b => b.id === breakerId);
+      if (!mover) return { ok: false };
+
+      const useCol = targetSlot % 2;
+      const target = targetSlot;
+
+      // Multi-pole must fit from target down its column
+      const moverEnd = target + (mover.span - 1) * 2;
+      if (moverEnd > totalSpaces) return { ok: false };
+      const needed = occupiedSlots(target, mover.span);
+      if (needed.some(n => (n % 2) !== useCol || n > totalSpaces || n < 1)) return { ok: false };
+
+      // Everyone keeps seat; mover jumps to target (old slots freed automatically)
+      const slots = {};
+      source.forEach(b => { slots[b.id] = b.slot; });
+      const originSlot = slots[mover.id];
+      slots[mover.id] = target;
+
+      // Same position → no-op success
+      if (originSlot === target) return { ok: true, slots };
+
+      // A completely full destination column cannot absorb pushes (would rotate / teleport via the hole)
+      const destHadEmpty = columnHasEmptySlot(source, totalSpaces, useCol);
+
+      // Resolve collisions by pushing NON-mover breakers DOWN (+2) only — never wrap to top
+      for (let safety = 0; safety < 200; safety++) {
+        const hits = findCollisions(slots, source);
+        if (!hits.length) break;
+
+        const toPush = new Set();
+        for (const h of hits) {
+          if (h.a !== mover.id) toPush.add(h.a);
+          if (h.b !== mover.id) toPush.add(h.b);
+        }
+        if (!toPush.size) return { ok: false };
+
+        // Push bottom-most colliding breaker one step down.
+        // Tie-break on ORIGINAL slot so a newly-arrived breaker isn't shoved past a resident.
+        const ordered = source
+          .filter(b => toPush.has(b.id))
+          .sort((a, b) => {
+            const d = slots[b.id] - slots[a.id];
+            if (d !== 0) return d;
+            return b.slot - a.slot;
+          });
+        const blk = ordered[0];
+        const newStart = slots[blk.id] + 2;
+        const newEnd = newStart + (blk.span - 1) * 2;
+        if (newEnd > totalSpaces) return { ok: false };
+        if ((newStart % 2) !== (slots[blk.id] % 2)) return { ok: false };
+        slots[blk.id] = newStart;
+      }
+
+      if (findCollisions(slots, source).length) return { ok: false };
+      if (slots[mover.id] !== target) return { ok: false };
+      const finalOcc = buildOccupancy(slots, source, new Set([mover.id]));
+      if (needed.some(n => finalOcc.has(n))) return { ok: false };
+
+      // Nothing should have moved UP relative to its origin (teleport guard)
+      let anyNonMoverMoved = false;
+      for (const b of source) {
+        if (b.id === mover.id) continue;
+        if (slots[b.id] < b.slot) return { ok: false };
+        if (slots[b.id] !== b.slot) anyNonMoverMoved = true;
+      }
+      // Full column: nowhere to push without rotating through the mover's hole
+      if (anyNonMoverMoved && !destHadEmpty) return { ok: false };
+
+      return { ok: true, slots };
+    }
+
+    function applySlotMap(panel, slotMap) {
+      panel.breakers.forEach(b => {
+        if (slotMap[b.id] != null) b.slot = slotMap[b.id];
+      });
+    }
+
+    let dragSnapshot = null; // original slots while previewing
+    let lastPreviewSlot = null;
+
+    function restoreDragSnapshot() {
+      const panel = getPanel();
+      if (!panel || !dragSnapshot) return;
+      applySlotMap(panel, dragSnapshot);
+      dragSnapshot = null;
+      lastPreviewSlot = null;
+    }
+
+    let dragSlotAnchors = null; // slotNum -> {left,top,width,height} in viewport coords at drag start
+    let dragBreakerOrigins = null; // breakerId -> {left,top}
+
+    function captureDragLayoutAnchors() {
+      const panel = getPanel();
+      const grid = document.getElementById('slots-grid');
+      dragSlotAnchors = {};
+      dragBreakerOrigins = {};
+      if (!panel || !grid) return;
+
+      grid.querySelectorAll('.slot[data-slot]').forEach(s => {
+        const n = parseInt(s.dataset.slot, 10);
+        if (!isNaN(n)) {
+          const r = s.getBoundingClientRect();
+          dragSlotAnchors[n] = { left: r.left, top: r.top, width: r.width, height: r.height };
+        }
+      });
+
+      document.querySelectorAll('#slots-grid .breaker[data-id]').forEach(el => {
+        const r = el.getBoundingClientRect();
+        dragBreakerOrigins[el.dataset.id] = { left: r.left, top: r.top };
+      });
+
+      // Fill missing slots (removed under multi-pole spans) by interpolating same-column neighbors
+      const total = panel.spaces || 30;
+      for (let col = 0; col <= 1; col++) {
+        const nums = [];
+        for (let s = (col === 1 ? 1 : 2); s <= total; s += 2) nums.push(s);
+        const measured = nums.filter(s => dragSlotAnchors[s]);
+        for (const s of nums) {
+          if (dragSlotAnchors[s]) continue;
+          let lo = null, hi = null;
+          for (const m of measured) {
+            if (m < s) lo = m;
+            if (m > s && hi == null) hi = m;
+          }
+          if (lo != null && hi != null) {
+            const a = dragSlotAnchors[lo], b = dragSlotAnchors[hi];
+            const t = (s - lo) / (hi - lo);
+            dragSlotAnchors[s] = {
+              left: a.left + (b.left - a.left) * t,
+              top: a.top + (b.top - a.top) * t,
+              width: a.width,
+              height: Math.min(a.height, 72)
+            };
+          } else if (lo != null) {
+            const a = dragSlotAnchors[lo];
+            const steps = (s - lo) / 2;
+            // Infer row delta from any two measured in column, else 78px
+            let rowDelta = 78;
+            if (measured.length >= 2) {
+              const i0 = measured[0], i1 = measured[1];
+              rowDelta = (dragSlotAnchors[i1].top - dragSlotAnchors[i0].top) / ((i1 - i0) / 2);
+            }
+            dragSlotAnchors[s] = {
+              left: a.left,
+              top: a.top + rowDelta * steps,
+              width: a.width,
+              height: Math.min(a.height, 72)
+            };
+          } else if (hi != null) {
+            const b = dragSlotAnchors[hi];
+            const steps = (hi - s) / 2;
+            let rowDelta = 78;
+            if (measured.length >= 2) {
+              const i0 = measured[0], i1 = measured[1];
+              rowDelta = (dragSlotAnchors[i1].top - dragSlotAnchors[i0].top) / ((i1 - i0) / 2);
+            }
+            dragSlotAnchors[s] = {
+              left: b.left,
+              top: b.top - rowDelta * steps,
+              width: b.width,
+              height: Math.min(b.height, 72)
+            };
+          }
+        }
+      }
+    }
+
+    function clearPreviewTransforms() {
+      document.querySelectorAll('.breaker.preview-shift').forEach(el => {
+        el.classList.remove('preview-shift', 'preview-mover');
+        el.style.transform = '';
+        el.style.zIndex = '';
+      });
+      document.querySelectorAll('.slot.drop-target').forEach(s => {
+        s.classList.remove('drop-target', 'drop-invalid');
+      });
+    }
+
+    function applyPreviewTransforms(layout, moverId) {
+      clearPreviewTransforms();
+      if (!layout || !layout.ok || !dragSnapshot || !dragBreakerOrigins) {
+        return;
+      }
+      for (const [id, newSlot] of Object.entries(layout.slots)) {
+        const oldSlot = dragSnapshot[id];
+        if (oldSlot == null || newSlot == null || oldSlot === newSlot) continue;
+        const el = document.querySelector(`#slots-grid .breaker[data-id="${id}"]`);
+        const origin = dragBreakerOrigins[id];
+        const dest = dragSlotAnchors && dragSlotAnchors[newSlot];
+        if (!el || !origin || !dest) continue;
+        const dx = dest.left - origin.left;
+        const dy = dest.top - origin.top;
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.classList.add('preview-shift');
+        if (id === moverId) el.classList.add('preview-mover');
+      }
+    }
+
+    function previewMoveTo(breakerId, targetSlot) {
+      const panel = getPanel();
+      if (!panel) return;
+      if (!dragSnapshot) {
+        dragSnapshot = {};
+        panel.breakers.forEach(b => { dragSnapshot[b.id] = b.slot; });
+      }
+      if (!dragSlotAnchors) captureDragLayoutAnchors();
+      // Compute only — do NOT rebuild panel DOM under an active touch (Android cancels the gesture)
+      const layout = computeMoveLayoutFromSnapshot(dragSnapshot, panel, breakerId, targetSlot);
+      lastPreviewSlot = targetSlot;
+      showPreviewBanner(targetSlot, layout);
+      if (layout && layout.ok) {
+        applyPreviewTransforms(layout, breakerId);
+        highlightDropSlot(targetSlot, true);
+      } else {
+        clearPreviewTransforms();
+        highlightDropSlot(targetSlot, false);
+      }
+    }
+
+    // Uses snapshot slots instead of live panel positions
+    function computeMoveLayoutFromSnapshot(snapshot, panel, breakerId, targetSlot) {
+      const source = (panel.breakers || []).map(b => ({
+        id: b.id,
+        slot: snapshot[b.id] != null ? snapshot[b.id] : b.slot,
+        span: spanOf(b),
+        tandem: !!b.tandem
+      }));
+      return computeColumnMove(source, panel.spaces || 30, breakerId, targetSlot);
+    }
+
+    function highlightDropSlot(slotNum, ok) {
+      document.querySelectorAll('.slot.drop-target').forEach(s => s.classList.remove('drop-target', 'drop-invalid'));
+      const el = document.querySelector(`.slot[data-slot="${slotNum}"]`);
+      if (el) {
+        el.classList.add('drop-target');
+        if (ok === false) el.classList.add('drop-invalid');
+      }
+    }
+
+    function showPreviewBanner(targetSlot, layout, extra) {
+      let ban = document.getElementById('drag-preview-banner');
+      if (!ban) {
+        ban = document.createElement('div');
+        ban.id = 'drag-preview-banner';
+        ban.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:10001;background:#0f172a;color:#e2e8f0;padding:10px 12px;font-size:0.85rem;text-align:center;border-bottom:2px solid #38bdf8;pointer-events:none;';
+        document.body.appendChild(ban);
+      }
+      ban.style.display = 'block';
+      if (extra) {
+        ban.textContent = extra;
+        ban.style.borderBottomColor = '#38bdf8';
+        return;
+      }
+      if (!layout || !layout.ok) {
+        ban.textContent = targetSlot ? `Cannot place at slot ${targetSlot}` : 'Drag over a slot to preview';
+        ban.style.borderBottomColor = '#ef4444';
+        return;
+      }
+      ban.style.borderBottomColor = '#38bdf8';
+      const panel = getPanel();
+      const parts = Object.entries(layout.slots)
+        .sort((a, b) => a[1] - b[1])
+        .map(([id, slot]) => {
+          const b = (panel.breakers || []).find(x => x.id === id);
+          const name = b ? (b.tandem ? (b.nameA || 'Tandem') : (b.name || '?')) : '?';
+          const changed = dragSnapshot && dragSnapshot[id] !== slot;
+          return `${slot}:${name}${changed ? '*' : ''}`;
+        });
+      ban.textContent = `Slot ${targetSlot} → ${parts.join(' · ')}`;
+    }
+
+    function hidePreviewBanner() {
+      const ban = document.getElementById('drag-preview-banner');
+      if (ban) ban.style.display = 'none';
+    }
+
+    function moveBreakerToSlot(breakerId, targetSlot) {
+      const panel = getPanel();
+      if (!panel || panel.locked) return false;
+      // Always start from original positions (preview does not mutate data)
+      if (dragSnapshot) applySlotMap(panel, dragSnapshot);
+      const layout = dragSnapshot
+        ? computeMoveLayoutFromSnapshot(dragSnapshot, panel, breakerId, targetSlot)
+        : computeMoveLayout(panel, breakerId, targetSlot);
+      if (!layout.ok) {
+        if (dragSnapshot) applySlotMap(panel, dragSnapshot);
+        clearPreviewTransforms();
+        toast('Not enough room below — move cancelled');
+        dragSnapshot = null;
+        lastPreviewSlot = null;
+        dragSlotAnchors = null;
+        dragBreakerOrigins = null;
+        clearTouchDrag();
+        hidePreviewBanner();
+        // Restore visual without relying on mid-drag DOM (data already restored)
+        renderPanelVisual();
+        return false;
+      }
+      pushUndo('move breaker');
+      applySlotMap(panel, layout.slots);
+      saveData();
+      clearPreviewTransforms();
+      dragSnapshot = null;
+      lastPreviewSlot = null;
+      dragSlotAnchors = null;
+      dragBreakerOrigins = null;
+      clearTouchDrag();
+      hidePreviewBanner();
+      dragBreakerId = null;
+      renderPanelVisual();
+      updateUndoButton();
+      toast('Breaker moved');
+      return true;
+    }
+
+    // Desktop HTML5 drag removed (was unwired / dead). Touch long-press is the drag path.
+
+    // ===================== UNIFIED GESTURE STATE MACHINE =====================
+    // mode: none | press | drag | pinch | modal-swipe
+    let gestureMode = 'none';
+    let suppressClickUntil = 0;
+    // press/drag
+    let gBreakerId = null;
+    let gStartX = 0, gStartY = 0;
+    let gPressTimer = null;
+    let gGhost = null;
+    let gDragArmedAt = 0;
+    let gDragMoved = false;
+    let gOriginSlot = null;
+    // pinch
+    let pinchStartDist = 0, pinchStartZoom = 1;
+    // modal swipe
+    let swipeStartX = 0, swipeStartY = 0;
+
+    // Multi-pole cells span several rows; map Y within the tall cell to the logical slot
+    function slotFromSpannedEl(slotEl, y, total) {
+      const n = parseInt(slotEl.dataset.slot, 10);
+      if (isNaN(n)) return null;
+      const span = slotEl.classList.contains('span-3') ? 3
+        : slotEl.classList.contains('span-2') ? 2 : 1;
+      if (span <= 1) return n;
+      const r = slotEl.getBoundingClientRect();
+      if (r.height < 1) return n;
+      const frac = Math.max(0, Math.min(0.999, (y - r.top) / r.height));
+      const rowOffset = Math.floor(frac * span);
+      const result = n + rowOffset * 2;
+      return (result >= 1 && result <= total) ? result : n;
+    }
+
+    function slotNumberFromPoint(x, y) {
+      const grid = document.getElementById('slots-grid');
+      if (!grid) return null;
+      const panel = getPanel();
+      const total = (panel && panel.spaces) || 30;
+
+      // 1) Prefer real slot nodes under the point (hide ghost so it doesn't block)
+      const ghostHidden = gGhost && gGhost.style.visibility !== 'hidden';
+      if (gGhost) gGhost.style.visibility = 'hidden';
+      const stack = document.elementsFromPoint(x, y) || [];
+      if (gGhost && ghostHidden) gGhost.style.visibility = 'visible';
+      for (const el of stack) {
+        const s = el.closest && el.closest('.slot');
+        if (s && s.dataset.slot) {
+          const n = slotFromSpannedEl(s, y, total);
+          if (n != null) return n;
+        }
+      }
+
+      // 2) Geometry of every visible slot (works with zoom; subdivides multi-pole)
+      const nodes = grid.querySelectorAll('.slot');
+      for (const slot of nodes) {
+        const r = slot.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+          const n = slotFromSpannedEl(slot, y, total);
+          if (n != null) return n;
+        }
+      }
+
+      // 3) Reconstruct from grid bounds (handles slots removed by multi-pole span)
+      const gr = grid.getBoundingClientRect();
+      if (gr.width < 10 || gr.height < 10) return null;
+      if (x < gr.left || x > gr.right || y < gr.top || y > gr.bottom) return null;
+
+      let relX = (x - gr.left) / gr.width;
+      let relY = (y - gr.top) / gr.height;
+      if (panel && panel.flipped) {
+        relX = 1 - relX;
+        relY = 1 - relY;
+      }
+      const half = Math.ceil(total / 2);
+      const col = relX < 0.5 ? 0 : 1;
+      const row = Math.min(half - 1, Math.max(0, Math.floor(relY * half)));
+      const slot = col === 0 ? (row * 2 + 1) : (row * 2 + 2);
+      return (slot >= 1 && slot <= total) ? slot : null;
+    }
+
+    let dragScrollRaf = null;
+    let dragLastX = 0;
+    let dragLastY = 0;
+    let dragScrollActive = false;
+
+    function stopDragAutoScroll() {
+      dragScrollActive = false;
+      if (dragScrollRaf) {
+        cancelAnimationFrame(dragScrollRaf);
+        dragScrollRaf = null;
+      }
+    }
+
+    function startDragAutoScroll() {
+      if (dragScrollActive) return;
+      dragScrollActive = true;
+      const edge = 80; // px from top/bottom to trigger
+      const maxSpeed = 22;
+      const step = () => {
+        if (!dragScrollActive || gestureMode !== 'drag') {
+          dragScrollRaf = null;
+          return;
+        }
+        const y = dragLastY;
+        const h = window.innerHeight || 600;
+        let dy = 0;
+        if (y < edge) {
+          const t = Math.max(0, 1 - y / edge);
+          dy = -Math.ceil(maxSpeed * t * t);
+        } else if (y > h - edge) {
+          const t = Math.max(0, 1 - (h - y) / edge);
+          dy = Math.ceil(maxSpeed * t * t);
+        }
+        if (dy) {
+          window.scrollBy(0, dy);
+          // Keep drop target in sync as content moves under the finger
+          if (gBreakerId) {
+            const slot = slotNumberFromPoint(dragLastX, dragLastY);
+            if (slot && slot !== lastPreviewSlot) previewMoveTo(gBreakerId, slot);
+          }
+        }
+        dragScrollRaf = requestAnimationFrame(step);
+      };
+      dragScrollRaf = requestAnimationFrame(step);
+    }
+
+    function clearGhost() {
+      stopDragAutoScroll();
+      if (gGhost && gGhost.parentNode) gGhost.parentNode.removeChild(gGhost);
+      gGhost = null;
+      document.querySelectorAll('.drag-ghost').forEach(el => el.remove());
+      document.querySelectorAll('.breaker.dragging').forEach(el => el.classList.remove('dragging'));
+      clearPreviewTransforms();
+    }
+
+    function resetGesture() {
+      clearTimeout(gPressTimer);
+      gPressTimer = null;
+      clearGhost();
+      gBreakerId = null;
+      pinchStartDist = 0;
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      gestureMode = 'none';
+      hidePreviewBanner();
+    }
+
+    function enterDragMode(breakerEl) {
+      const panel = getPanel();
+      if (!panel || panel.locked || !gBreakerId) {
+        resetGesture();
+        return;
+      }
+      const b = panel.breakers.find(x => x.id === gBreakerId);
+      gOriginSlot = b ? b.slot : null;
+      gDragMoved = false;
+      gDragArmedAt = Date.now();
+      gestureMode = 'drag';
+      // Don't change body styles here — can trigger touchcancel on some Androids
+      if (breakerEl) breakerEl.classList.add('dragging');
+      dragSnapshot = {};
+      panel.breakers.forEach(x => { dragSnapshot[x.id] = x.slot; });
+      lastPreviewSlot = null;
+      captureDragLayoutAnchors();
+      dragLastX = gStartX;
+      dragLastY = gStartY;
+      startDragAutoScroll();
+      toast('Drag to a slot — hold at top/bottom edge to scroll');
+      const w = breakerEl ? breakerEl.offsetWidth : 120;
+      gGhost = document.createElement('div');
+      gGhost.className = 'breaker drag-ghost';
+      if (breakerEl) gGhost.innerHTML = breakerEl.innerHTML;
+      gGhost.style.cssText = `position:fixed;pointer-events:none;opacity:0.92;z-index:9998;width:${w}px;left:${gStartX - w / 2}px;top:${gStartY - 30}px;box-shadow:0 8px 24px rgba(0,0,0,0.45);border-radius:8px;background:#1e293b;border:1.5px solid #334155;`;
+      document.body.appendChild(gGhost);
+      showPreviewBanner(gOriginSlot, null, 'Move finger — top bar shows where breakers will go');
+    }
+
+    function getTouchDist(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onGestureStart(e) {
+      const modalOpen = document.getElementById('modal-breaker')?.classList.contains('open');
+
+      // Two-finger pinch (panel only, not during drag)
+      if (e.touches.length === 2 && gestureMode !== 'drag') {
+        clearTimeout(gPressTimer);
+        gPressTimer = null;
+        if (gestureMode === 'press') {
+          gBreakerId = null;
+        }
+        const inPanel = e.target.closest('.panel-container') || e.target.closest('.panel-box');
+        if (inPanel && !modalOpen) {
+          gestureMode = 'pinch';
+          pinchStartDist = getTouchDist(e.touches[0], e.touches[1]);
+          pinchStartZoom = panelZoom;
+        }
+        return;
+      }
+
+      if (e.touches.length !== 1) return;
+      if (gestureMode === 'drag' || gestureMode === 'pinch') return;
+
+      const t = e.touches[0];
+      gStartX = t.clientX;
+      gStartY = t.clientY;
+
+      // Modal swipe candidate
+      if (modalOpen) {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'button') {
+          gestureMode = 'none';
+          return;
+        }
+        gestureMode = 'modal-swipe';
+        swipeStartX = t.clientX;
+        swipeStartY = t.clientY;
+        return;
+      }
+
+      // Breaker long-press/drag is owned by onBreakerTouchStart — do not reset mode here
+      if (e.target.closest && e.target.closest('.breaker')) return;
+      // leave mode alone if already pressing/dragging a breaker
+      if (gestureMode === 'press' || gestureMode === 'drag') return;
+      gestureMode = 'none';
+    }
+
+    function onGestureMove(e) {
+      // press/drag owned by onBreakerTouchStart handlers
+      if (gestureMode === 'none' || gestureMode === 'press' || gestureMode === 'drag') return;
+
+      if (gestureMode === 'pinch') {
+        if (e.touches.length === 2 && pinchStartDist > 0) {
+          e.preventDefault();
+          const dist = getTouchDist(e.touches[0], e.touches[1]);
+          panelZoom = Math.max(0.55, Math.min(2.0, pinchStartZoom * (dist / pinchStartDist)));
+          applyPanelTransform();
+        }
+      }
+    }
+
+    function onGestureEnd(e) {
+      // press/drag owned by onBreakerTouchStart
+      if (gestureMode === 'press' || gestureMode === 'drag') return;
+
+      if (gestureMode === 'pinch') {
+        if (!e.touches || e.touches.length < 2) {
+          pinchStartDist = 0;
+          gestureMode = 'none';
+        }
+        return;
+      }
+
+      if (gestureMode === 'modal-swipe') {
+        const t = e.changedTouches && e.changedTouches[0];
+        gestureMode = 'none';
+        if (!t) return;
+        const dx = t.clientX - swipeStartX;
+        const dy = t.clientY - swipeStartY;
+        if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+        navBreaker(dx < 0 ? 1 : -1);
+      }
+    }
+
+    // Single set of document listeners
+    document.addEventListener('touchstart', onGestureStart, { passive: true });
+    document.addEventListener('touchmove', onGestureMove, { passive: false });
+    document.addEventListener('touchend', onGestureEnd, { passive: true });
+    document.addEventListener('touchcancel', onGestureEnd, { passive: true });
+
+    function clearTouchDrag() { clearGhost(); }
+
+    // ===================== TOUCH BREAKER DRAG =====================
+    function onBreakerTouchStart(e) {
+      const panel = getPanel();
+      if (!panel || panel.locked) return;
+      if (e.touches.length !== 1) return;
+      if (gestureMode === 'pinch' || gestureMode === 'drag') return;
+
+      const el = e.currentTarget;
+      const id = el.dataset.id;
+      if (!id) return;
+
+      // Do NOT preventDefault or stopPropagation here — allows scroll when finger starts on a breaker
+      const t0 = e.touches[0];
+      gBreakerId = id;
+      gStartX = t0.clientX;
+      gStartY = t0.clientY;
+      gDragMoved = false;
+      gestureMode = 'press';
+      const b = panel.breakers.find(x => x.id === id);
+      gOriginSlot = b ? b.slot : null;
+
+      clearTimeout(gPressTimer);
+      gPressTimer = setTimeout(() => {
+        if (gestureMode !== 'press' || gBreakerId !== id) return;
+        // Long-press → drag; lock scrolling only then
+        try { el.style.touchAction = 'none'; } catch (_) {}
+        enterDragMode(el);
+      }, 450);
+
+      const onMove = (ev) => {
+        if (!ev.touches[0] || gBreakerId !== id) return;
+        const t = ev.touches[0];
+        const dx = Math.abs(t.clientX - gStartX);
+        const dy = Math.abs(t.clientY - gStartY);
+        if (gestureMode === 'press') {
+          // Any real movement cancels long-press so the page can scroll
+          if (dx > 10 || dy > 10) {
+            clearTimeout(gPressTimer);
+            gestureMode = 'none';
+            gBreakerId = null;
+            document.removeEventListener('touchmove', onMove, { capture: true });
+            document.removeEventListener('touchend', onEnd, { capture: true });
+            document.removeEventListener('touchcancel', onEnd, { capture: true });
+          }
+          // Never preventDefault during press — browser handles scroll
+          return;
+        }
+        if (gestureMode !== 'drag') return;
+        ev.preventDefault();
+        gDragMoved = true;
+        dragLastX = t.clientX;
+        dragLastY = t.clientY;
+        startDragAutoScroll();
+        if (gGhost) {
+          gGhost.style.left = (t.clientX - gGhost.offsetWidth / 2) + 'px';
+          gGhost.style.top = (t.clientY - 30) + 'px';
+        }
+        const slot = slotNumberFromPoint(t.clientX, t.clientY);
+        if (slot && slot !== lastPreviewSlot) previewMoveTo(id, slot);
+        else if (!slot) showPreviewBanner(null, null, 'Drag over a panel slot…');
+      };
+
+      const onEnd = (ev) => {
+        document.removeEventListener('touchmove', onMove, { capture: true });
+        document.removeEventListener('touchend', onEnd, { capture: true });
+        document.removeEventListener('touchcancel', onEnd, { capture: true });
+        clearTimeout(gPressTimer);
+        try { if (el) el.style.touchAction = ''; } catch (_) {}
+
+        const t = (ev.changedTouches && ev.changedTouches[0]) || null;
+        const x = t ? t.clientX : gStartX;
+        const y = t ? t.clientY : gStartY;
+
+        if (gestureMode === 'press') {
+          gestureMode = 'none';
+          gBreakerId = null;
+          return; // let click open editor
+        }
+        if (gestureMode !== 'drag') return;
+
+        const origin = gOriginSlot;
+        const moved = gDragMoved;
+        clearGhost();
+        hidePreviewBanner();
+        gestureMode = 'none';
+        gBreakerId = null;
+        suppressClickUntil = Date.now() + 600;
+
+        if (ev.type === 'touchcancel' || !moved) {
+          clearPreviewTransforms();
+          if (dragSnapshot) restoreDragSnapshot();
+          dragSlotAnchors = null;
+          dragBreakerOrigins = null;
+          hidePreviewBanner();
+          renderPanelVisual();
+          return;
+        }
+        const slot = slotNumberFromPoint(x, y);
+        if (slot && slot !== origin) moveBreakerToSlot(id, slot);
+        else {
+          clearPreviewTransforms();
+          if (dragSnapshot) restoreDragSnapshot();
+          dragSlotAnchors = null;
+          dragBreakerOrigins = null;
+          hidePreviewBanner();
+          renderPanelVisual();
+        }
+      };
+
+      // passive:true on move during press would be ideal, but we need preventDefault only after drag starts
+      document.addEventListener('touchmove', onMove, { capture: true, passive: false });
+      document.addEventListener('touchend', onEnd, { capture: true });
+      document.addEventListener('touchcancel', onEnd, { capture: true });
+    }
+
+    function toggleMainBreaker() {
+      const panel = getPanel();
+      if (!panel || !panel.hasMain) return;
+      panel.mainOn = !(panel.mainOn !== false);
+      saveData();
+      renderPanelVisual();
+    }
+
+    function toggleNumbers() {
+      const panel = getPanel();
+      panel.showNumbers = !(panel.showNumbers !== false);
+      saveData();
+      renderPanelVisual();
+    }
+
+    function toggleFlip() {
+      const panel = getPanel();
+      panel.flipped = !panel.flipped;
+      saveData();
+      renderPanelVisual();
+      applyPanelTransform();
+    }
+
+    function toggleLock() {
+      const panel = getPanel();
+      panel.locked = !panel.locked;
+      saveData();
+      renderPanelVisual();
+    }
+
+    let panelZoom = 1;
+
+    function applyPanelTransform() {
+      const panel = getPanel();
+      const box = document.getElementById('panel-box');
+      if (!box) return;
+      const flip = panel && panel.flipped ? ' rotate(180deg)' : '';
+      box.style.transform = `scale(${panelZoom})${flip}`;
+    }
+
+    function initPanelPinch() {
+      // Pinch is handled by the unified gesture state machine
+    }
+
+    // ===================== BREAKERS =====================
+    function openBreakerModal(editId = null, preferredSlot = null) {
+      try {
+        const panel = getPanel();
+        if (!panel) return;
+        if (panel.locked && !editId) {
+          toast('Unlock the panel first');
+          return;
+        }
+        editingBreakerId = editId;
+        document.getElementById('breaker-modal-title').textContent = editId ? 'Edit Breaker' : 'Add Breaker';
+        document.getElementById('btn-delete-breaker').style.display = editId ? 'block' : 'none';
+
+        // Populate slot select
+        const sel = document.getElementById('breaker-slot');
+        sel.innerHTML = '';
+        for (let i = 1; i <= panel.spaces; i++) {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = i;
+          sel.appendChild(opt);
+        }
+
+        if (editId) {
+          const b = panel.breakers.find(x => x.id === editId);
+          currentSpaces = b.spaces || 1;
+          document.getElementById('breaker-tandem').checked = !!b.tandem;
+          document.getElementById('spaces-value').textContent = b.tandem ? 'Tandem' : String(currentSpaces);
+          document.getElementById('breaker-slot').value = b.slot;
+          document.getElementById('breaker-gfci').checked = !!b.gfci;
+          document.getElementById('breaker-afci').checked = !!b.afci;
+          document.getElementById('breaker-notes').value = b.notes || '';
+          setSelectedGroupValue(b.group || '');
+          if (b.tandem) {
+            document.getElementById('breaker-name-a').value = b.nameA || '';
+            document.getElementById('breaker-amps-a').value = b.ampsA || 15;
+            document.getElementById('breaker-name-b').value = b.nameB || '';
+            document.getElementById('breaker-amps-b').value = b.ampsB || 15;
+          } else {
+            document.getElementById('breaker-name').value = b.name || '';
+            document.getElementById('breaker-amps').value = b.amps || 20;
+          }
+        } else {
+          currentSpaces = 1;
+          document.getElementById('breaker-tandem').checked = false;
+          document.getElementById('spaces-value').textContent = '1';
+          document.getElementById('breaker-gfci').checked = false;
+          document.getElementById('breaker-afci').checked = false;
+          document.getElementById('breaker-name').value = '';
+          document.getElementById('breaker-amps').value = 20;
+          document.getElementById('breaker-name-a').value = '';
+          document.getElementById('breaker-amps-a').value = 15;
+          document.getElementById('breaker-name-b').value = '';
+          document.getElementById('breaker-amps-b').value = 15;
+          document.getElementById('breaker-notes').value = '';
+          setSelectedGroupValue('');
+          const slotToUse = preferredSlot || findFirstFreeSlot(panel, 1) || 1;
+          document.getElementById('breaker-slot').value = slotToUse;
+        }
+        toggleTandemFields();
+        const modal = document.getElementById('modal-breaker');
+        modal.classList.add('open');
+        modal.style.display = 'flex';
+        updateBreakerNav();
+        // snapshot after fields are filled
+        setTimeout(() => { breakerFormSnapshot = snapshotBreakerForm(); }, 50);
+      } catch (err) {
+        alert('Error opening breaker form: ' + err.message);
+      }
+    }
+
+    function changeSpaces(delta) {
+      const tandemBox = document.getElementById('breaker-tandem');
+      const isTandem = tandemBox.checked;
+
+      if (delta < 0) {
+        if (isTandem) {
+          // already at tandem, stay
+        } else if (currentSpaces === 1) {
+          // 1 → tandem
+          tandemBox.checked = true;
+          currentSpaces = 1;
+          // Carry over single name into Circuit A if empty
+          const single = (document.getElementById('breaker-name').value || '').trim();
+          const a = document.getElementById('breaker-name-a');
+          if (single && a && !a.value.trim()) a.value = single;
+          const amps = document.getElementById('breaker-amps').value;
+          const ampsA = document.getElementById('breaker-amps-a');
+          if (amps && ampsA) ampsA.value = amps;
+        } else {
+          currentSpaces = Math.max(1, currentSpaces - 1);
+        }
+      } else {
+        if (isTandem) {
+          // tandem → 1
+          tandemBox.checked = false;
+          currentSpaces = 1;
+          const a = (document.getElementById('breaker-name-a').value || '').trim();
+          const single = document.getElementById('breaker-name');
+          if (a && single && !single.value.trim()) single.value = a;
+        } else {
+          currentSpaces = Math.min(3, currentSpaces + 1);
+        }
+      }
+
+      document.getElementById('spaces-value').textContent =
+        tandemBox.checked ? 'Tandem' : String(currentSpaces);
+      toggleTandemFields();
+    }
+
+    function toggleTandemFields() {
+      const isTandem = document.getElementById('breaker-tandem').checked;
+      document.getElementById('single-fields').style.display = isTandem ? 'none' : 'block';
+      document.getElementById('tandem-fields').style.display = isTandem ? 'block' : 'none';
+    }
+
+    // Breakers ordered down the panel: left column top-to-bottom, then right (by slot number)
+    function sortedBreakers(panel) {
+      return (panel.breakers || []).slice().sort((a, b) => a.slot - b.slot);
+    }
+
+    function currentEditSlot() {
+      const sel = document.getElementById('breaker-slot');
+      return sel ? parseInt(sel.value, 10) || 1 : 1;
+    }
+
+    function breakerAtSlot(panel, slot) {
+      return (panel.breakers || []).find(b => {
+        if (b.tandem || (b.spaces || 1) <= 1) return b.slot === slot;
+        return slotsForBreaker(b.slot, b.spaces || 1).includes(slot);
+      }) || null;
+    }
+
+    // Down the column first: 1,3,5… then 2,4,6…
+    function slotNavOrder(panel) {
+      const total = panel.spaces || 30;
+      const odds = [], evens = [];
+      for (let i = 1; i <= total; i++) {
+        if (i % 2 === 1) odds.push(i);
+        else evens.push(i);
+      }
+      return odds.concat(evens);
+    }
+
+    function adjacentSlot(panel, slot, dir) {
+      const order = slotNavOrder(panel);
+      const idx = order.indexOf(slot);
+      if (idx < 0) return null;
+      const next = order[idx + dir];
+      return next || null;
+    }
+
+    function openSlot(slot) {
+      const panel = getPanel();
+      if (!panel) return;
+      const b = breakerAtSlot(panel, slot);
+      if (b) openBreakerModal(b.id);
+      else openBreakerModal(null, slot);
+    }
+
+    function updateBreakerNav() {
+      const panel = getPanel();
+      const nav = document.getElementById('breaker-nav');
+      const overlay = document.getElementById('modal-breaker');
+      if (!panel || !overlay || !overlay.classList.contains('open')) {
+        nav.style.display = 'none';
+        return;
+      }
+      const slot = currentEditSlot();
+      const order = slotNavOrder(panel);
+      const idx = order.indexOf(slot);
+      const total = order.length;
+      nav.style.display = 'flex';
+      document.getElementById('breaker-nav-label').textContent = `Slot ${slot}`;
+      const prevBtn = document.getElementById('btn-prev-breaker');
+      const nextBtn = document.getElementById('btn-next-breaker');
+      if (prevBtn) prevBtn.disabled = idx <= 0;
+      if (nextBtn) nextBtn.disabled = idx >= total - 1;
+    }
+
+    let breakerFormSnapshot = '';
+
+    function snapshotBreakerForm() {
+      const fields = [
+        'breaker-name', 'breaker-amps', 'breaker-name-a', 'breaker-amps-a',
+        'breaker-name-b', 'breaker-amps-b', 'breaker-slot', 'spaces-value',
+        'breaker-notes', 'breaker-group', 'breaker-group-custom'
+      ];
+      const vals = fields.map(id => {
+        const el = document.getElementById(id);
+        return el ? el.value || el.textContent : '';
+      });
+      vals.push(
+        document.getElementById('breaker-tandem').checked ? '1' : '0',
+        document.getElementById('breaker-gfci').checked ? '1' : '0',
+        document.getElementById('breaker-afci').checked ? '1' : '0'
+      );
+      return vals.join('|');
+    }
+
+    function isBreakerFormDirty() {
+      return breakerFormSnapshot && snapshotBreakerForm() !== breakerFormSnapshot;
+    }
+
+    let pendingLeave = null;
+
+    function requestLeaveBreaker(action) {
+      // Auto-save if dirty, then continue — no prompt
+      if (isBreakerFormDirty()) {
+        if (!saveBreakerQuiet()) return; // validation failed — stay on form
+      }
+      finishLeaveBreaker(action);
+    }
+
+    function finishLeaveBreaker(action) {
+      pendingLeave = null;
+      if (!action) return;
+      if (action.type === 'close') {
+        closeModal('breaker');
+        editingBreakerId = null;
+        breakerFormSnapshot = '';
+        renderPanelVisual();
+        updateUndoButton();
+      } else if (action.type === 'nav') {
+        const panel = getPanel();
+        if (!panel) return;
+        const from = action.fromSlot || currentEditSlot();
+        const slot = adjacentSlot(panel, from, action.dir);
+        if (!slot) {
+          toast(action.dir > 0 ? 'Last slot' : 'First slot');
+          return;
+        }
+        openSlot(slot);
+      }
+    }
+
+    function navBreaker(dir) {
+      const panel = getPanel();
+      if (!panel) return;
+      const overlay = document.getElementById('modal-breaker');
+      if (!overlay || !overlay.classList.contains('open')) return;
+      requestLeaveBreaker({ type: 'nav', dir, fromSlot: currentEditSlot() });
+    }
+
+    function closeBreakerModal() {
+      requestLeaveBreaker({ type: 'close' });
+    }
+
+    // ---- Undo (last 10 panel breaker snapshots) ----
+    const UNDO_LIMIT = 10;
+    let undoStack = []; // { panelId, breakers }
+
+    function pushUndo(label) {
+      const panel = getPanel();
+      if (!panel) return;
+      undoStack.push({
+        panelId: panel.id,
+        label: label || 'change',
+        breakers: JSON.parse(JSON.stringify(panel.breakers || []))
+      });
+      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+      updateUndoButton();
+    }
+
+    function updateUndoButton() {
+      const btn = document.getElementById('btn-undo');
+      if (!btn) return;
+      const panel = getPanel();
+      const n = panel ? undoStack.filter(u => u.panelId === panel.id).length : 0;
+      btn.disabled = n === 0;
+      btn.textContent = n ? `↩ Undo (${n})` : '↩ Undo';
+    }
+
+    function undoLastChange() {
+      const panel = getPanel();
+      if (!panel) return;
+      // Find last entry for this panel
+      let idx = -1;
+      for (let i = undoStack.length - 1; i >= 0; i--) {
+        if (undoStack[i].panelId === panel.id) { idx = i; break; }
+      }
+      if (idx < 0) {
+        toast('Nothing to undo');
+        updateUndoButton();
+        return;
+      }
+      const entry = undoStack.splice(idx, 1)[0];
+      panel.breakers = entry.breakers;
+      saveData();
+      renderPanelVisual();
+      updateUndoButton();
+      toast('Undid ' + (entry.label || 'last change'));
+    }
+
+    // Quiet save used by auto-save (returns false if validation fails)
+    function saveBreakerQuiet() {
+      const panel = getPanel();
+      if (!panel) return false;
+      const isTandem = !!document.getElementById('breaker-tandem').checked;
+      const slot = parseInt(document.getElementById('breaker-slot').value, 10) || 1;
+      const spaces = isTandem ? 1 : Math.max(1, Math.min(3, currentSpaces || 1));
+      if (!isRangeFree(panel, slot, spaces, editingBreakerId)
+          && !ensureRangeFree(panel, slot, spaces, editingBreakerId)) {
+        toast(isTandem ? 'That slot is occupied' : 'Not enough room below to expand — panel is full');
+        return false;
+      }
+      const gfci = document.getElementById('breaker-gfci').checked;
+      const afci = document.getElementById('breaker-afci').checked;
+      const notes = document.getElementById('breaker-notes').value.trim();
+      const group = getSelectedGroupValue();
+      let payload;
+      if (isTandem) {
+        let nameA = document.getElementById('breaker-name-a').value.trim();
+        let nameB = document.getElementById('breaker-name-b').value.trim();
+        if (!nameA) nameA = document.getElementById('breaker-name').value.trim();
+        if (!nameA || !nameB) {
+          toast('Enter both Circuit A and Circuit B names');
+          return false;
+        }
+        payload = {
+          tandem: true, nameA, nameB,
+          ampsA: parseInt(document.getElementById('breaker-amps-a').value, 10) || 15,
+          ampsB: parseInt(document.getElementById('breaker-amps-b').value, 10) || 15,
+          spaces: 1, slot, gfci, afci, notes, group,
+          name: '', amps: null
+        };
+      } else {
+        const name = document.getElementById('breaker-name').value.trim()
+          || document.getElementById('breaker-name-a').value.trim();
+        if (!name) {
+          // Empty name on leave of a new empty form — just discard
+          if (!editingBreakerId) {
+            breakerFormSnapshot = '';
+            return true;
+          }
+          toast('Breaker name required');
+          return false;
+        }
+        payload = {
+          tandem: false, name,
+          amps: parseInt(document.getElementById('breaker-amps').value, 10) || 20,
+          spaces, slot, gfci, afci, notes, group,
+          nameA: '', nameB: '', ampsA: null, ampsB: null
+        };
+      }
+      pushUndo(editingBreakerId ? 'edit breaker' : 'add breaker');
+      if (editingBreakerId) {
+        const b = panel.breakers.find(x => x.id === editingBreakerId);
+        if (b) Object.assign(b, payload);
+        else panel.breakers.push({ id: editingBreakerId, ...payload });
+      } else {
+        const id = uid();
+        panel.breakers.push({ id, ...payload });
+        editingBreakerId = id;
+      }
+      saveData();
+      breakerFormSnapshot = snapshotBreakerForm();
+      return true;
+    }
+
+    // Modal swipe is handled by the unified gesture state machine
+
+    // Multi-pole uses same column: start, start+2, start+4... (down the panel)
+    function slotsForBreaker(start, spaces) {
+      const list = [];
+      for (let i = 0; i < spaces; i++) list.push(start + i * 2);
+      return list;
+    }
+
+    function isRangeFree(panel, start, span, ignoreId) {
+      const occupied = new Set();
+      (panel.breakers || []).forEach(b => {
+        if (b.id === ignoreId) return;
+        const s = b.spaces || 1;
+        if (b.tandem) {
+          occupied.add(b.slot);
+        } else {
+          slotsForBreaker(b.slot, s).forEach(n => occupied.add(n));
+        }
+      });
+      if (span <= 1) {
+        return !occupied.has(start) && start <= panel.spaces;
+      }
+      const needed = slotsForBreaker(start, span);
+      const col = start % 2;
+      for (const n of needed) {
+        if (n > panel.spaces || occupied.has(n) || (n % 2) !== col) return false;
+      }
+      return true;
+    }
+
+    // Push ONLY breakers that collide with [start, span] downward (+2 cascade). No full-column repack.
+    function ensureRangeFree(panel, start, span, ignoreId) {
+      if (isRangeFree(panel, start, span, ignoreId)) return true;
+      if (span <= 1) return false;
+
+      const totalSpaces = panel.spaces || 30;
+      const needed = slotsForBreaker(start, span);
+      const col = start % 2;
+      if (needed.some(n => n > totalSpaces || (n % 2) !== col)) return false;
+
+      const source = (panel.breakers || []).map(b => ({
+        id: b.id,
+        slot: b.slot,
+        span: spanOf(b),
+        tandem: !!b.tandem
+      }));
+      const slots = {};
+      source.forEach(b => { slots[b.id] = b.slot; });
+
+      function rangeFree() {
+        const occ = buildOccupancy(slots, source, new Set([ignoreId]));
+        return needed.every(n => !occ.has(n));
+      }
+
+      for (let safety = 0; safety < 200; safety++) {
+        if (rangeFree() && !findCollisions(slots, source).length) break;
+
+        const blockerIds = new Set();
+        const occ = buildOccupancy(slots, source, new Set([ignoreId]));
+        for (const n of needed) {
+          if (occ.has(n)) {
+            String(occ.get(n)).split('|').forEach(id => {
+              if (id && id !== ignoreId) blockerIds.add(id);
+            });
+          }
+        }
+        // Cascade: collisions created by prior pushes
+        for (const h of findCollisions(slots, source)) {
+          if (h.a !== ignoreId) blockerIds.add(h.a);
+          if (h.b !== ignoreId) blockerIds.add(h.b);
+        }
+        if (!blockerIds.size) return false;
+
+        const ordered = source
+          .filter(b => blockerIds.has(b.id))
+          .sort((a, b) => slots[b.id] - slots[a.id]);
+        const blk = ordered[0];
+        const newStart = slots[blk.id] + 2;
+        const newEnd = newStart + (blk.span - 1) * 2;
+        if (newEnd > totalSpaces) return false;
+        if ((newStart % 2) !== (slots[blk.id] % 2)) return false;
+        // Never move a blocker upward
+        if (newStart < blk.slot) return false;
+        slots[blk.id] = newStart;
+      }
+
+      if (!rangeFree() || findCollisions(slots, source).length) return false;
+
+      // Teleport guard + apply
+      for (const b of source) {
+        if (b.id === ignoreId) continue;
+        if (slots[b.id] < b.slot) return false;
+      }
+      panel.breakers.forEach(b => {
+        if (slots[b.id] != null) b.slot = slots[b.id];
+      });
+      return isRangeFree(panel, start, span, ignoreId);
+    }
+
+    function findFirstFreeSlot(panel, span) {
+      for (let i = 1; i <= panel.spaces; i++) {
+        if (isRangeFree(panel, i, span, null)) return i;
+      }
+      return null;
+    }
+
+    function saveBreaker() {
+      // Explicit save path (kept for any leftover callers) — same as quiet autosave + close
+      if (!saveBreakerQuiet()) return;
+      closeModal('breaker');
+      editingBreakerId = null;
+      breakerFormSnapshot = '';
+      renderPanelVisual();
+      updateUndoButton();
+      toast('Breaker saved');
+    }
+
+    function deleteBreaker() {
+      if (!confirm('Delete this breaker?')) return;
+      const panel = getPanel();
+      if (!panel) return;
+      pushUndo('delete breaker');
+      panel.breakers = panel.breakers.filter(b => b.id !== editingBreakerId);
+      saveData();
+      breakerFormSnapshot = '';
+      closeModal('breaker');
+      editingBreakerId = null;
+      renderPanelVisual();
+      updateUndoButton();
+      toast('Breaker deleted');
+    }
+
+    // ===================== EXPORTS =====================
+    // Describe what shows in one physical slot for exports (panel-accurate)
+    function exportCellForSlot(panel, slot) {
+      const b = breakerAtSlot(panel, slot);
+      if (!b) {
+        return {
+          slot, empty: true, name: '', amps: '', type: '',
+          prot: '', group: '', notes: '', lines: [{ name: '', amps: '' }]
+        };
+      }
+      const prot = [b.gfci ? 'GFCI' : '', b.afci ? 'AFCI' : ''].filter(Boolean).join(' + ');
+      const grp = groupDisplayName(b.group) || '';
+      const notes = b.notes || '';
+      if (b.tandem) {
+        return {
+          slot: b.slot, empty: false, tandem: true,
+          name: `${b.nameA || ''} / ${b.nameB || ''}`,
+          amps: `${b.ampsA || ''}/${b.ampsB || ''}`,
+          type: 'Tandem', prot, group: grp, notes,
+          lines: [
+            { name: b.nameA || '', amps: b.ampsA || '' },
+            { name: b.nameB || '', amps: b.ampsB || '' }
+          ]
+        };
+      }
+      const span = b.spaces || 1;
+      const used = slotsForBreaker(b.slot, span);
+      const isStart = b.slot === slot;
+      const type = span === 1 ? '1-pole' : span === 2 ? '2-pole' : '3-pole';
+      const slotLabel = span > 1 ? used.join('–') : String(b.slot);
+      if (!isStart) {
+        // Continuation of multi-pole in lower row — still mark occupied
+        return {
+          slot, empty: false, continuation: true,
+          name: b.name || '', amps: b.amps || '',
+          type: type + ' (cont.)', prot, group: grp, notes: '',
+          lines: [{ name: b.name || '', amps: b.amps || '' }],
+          slotLabel
+        };
+      }
+      return {
+        slot: b.slot, empty: false,
+        name: b.name || '', amps: b.amps || '',
+        type, prot, group: grp, notes,
+        lines: [{ name: b.name || '', amps: b.amps || '' }],
+        slotLabel
+      };
+    }
+
+    function panelRowCount(panel) {
+      return Math.ceil((panel.spaces || 30) / 2);
+    }
+
+    function exportPanelPDF() {
+      const panel = getPanel();
+      const job = getCurrentJob();
+      if (!panel) return;
+      const total = panel.spaces || 30;
+      const rows = panelRowCount(panel);
+
+      let html = `
+        <html><head><title>${esc(panel.name)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 16px; color: #111; }
+          h1 { margin: 0 0 4px; font-size: 18px; }
+          .meta { color: #555; margin-bottom: 12px; font-size: 12px; }
+          table.panel { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+          table.panel th, table.panel td { border: 1px solid #333; padding: 6px 8px; vertical-align: middle; }
+          table.panel th { background: #e8e8e8; text-align: center; }
+          .slotnum { font-size: 10px; color: #666; font-weight: 700; vertical-align: top !important; }
+          .name { font-weight: 700; }
+          .amps { color: #333; font-size: 11px; }
+          .sub { font-size: 10px; color: #555; }
+          .empty { color: #bbb; }
+          .main { font-weight: bold; background: #e8f5e9; text-align: center; padding: 8px; margin-bottom: 8px; border: 1px solid #333; }
+          .tandem-line { margin: 2px 0; }
+          /* Multi-pole: vertically centered in rowspan, left-aligned like other breakers */
+          td.multi-cell { vertical-align: middle; text-align: left; }
+        </style></head><body>
+        <h1>${esc(panel.name)}${panel.isSubpanel ? ' (Subpanel)' : ''}</h1>
+        <div class="meta">${esc(job ? job.name : '')} · ${esc(job ? (job.address || '') : '')}<br>
+        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}</div>
+      `;
+      if (panel.hasMain) {
+        html += `<div class="main">MAIN ${panel.mainAmps || ''}A</div>`;
+      }
+      html += `
+        <table class="panel">
+          <thead>
+            <tr>
+              <th style="width:8%">#</th>
+              <th style="width:42%">Left (odd)</th>
+              <th style="width:8%">#</th>
+              <th style="width:42%">Right (even)</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      function cellHtml(c) {
+        if (!c || c.empty) return '<span class="empty">—</span>';
+        // Meta line: protection + group only (pole count is obvious from layout)
+        const meta = [c.prot, c.group].filter(Boolean).join(' · ');
+        if (c.tandem) {
+          return c.lines.map(l =>
+            `<div class="tandem-line"><span class="amps">${esc(String(l.amps))}A</span> <span class="name">${esc(l.name)}</span></div>`
+          ).join('') +
+            (meta ? `<div class="sub">${esc(meta)}</div>` : '') +
+            (c.notes ? `<div class="sub">${esc(c.notes)}</div>` : '');
+        }
+        return `<div class="amps">${esc(String(c.amps))}A</div>
+          <div class="name">${esc(c.name)}</div>
+          ${meta ? `<div class="sub">${esc(meta)}</div>` : ''}
+          ${c.notes ? `<div class="sub">${esc(c.notes)}</div>` : ''}`;
+      }
+
+      // Multi-pole spans down the column (odd slots or even slots). Track open rowspans.
+      let skipLeft = 0, skipRight = 0;
+      for (let row = 0; row < rows; row++) {
+        const leftNum = row * 2 + 1;
+        const rightNum = row * 2 + 2;
+        const left = leftNum <= total ? exportCellForSlot(panel, leftNum) : null;
+        const right = rightNum <= total ? exportCellForSlot(panel, rightNum) : null;
+
+        // Compute rowspan for multi-pole start cells
+        function spanRows(c) {
+          if (!c || c.empty || c.tandem || c.continuation) return 1;
+          const b = breakerAtSlot(panel, c.slot);
+          if (!b || b.tandem) return 1;
+          return Math.max(1, b.spaces || 1);
+        }
+
+        let leftTd = '';
+        let rightTd = '';
+        if (skipLeft > 0) {
+          skipLeft--;
+          // covered by rowspan above — no left content cell this row
+        } else if (leftNum <= total) {
+          const rs = spanRows(left);
+          if (rs > 1) {
+            left.rowSpan = rs;
+            skipLeft = rs - 1;
+            leftTd = `<td class="multi-cell" rowspan="${rs}">${cellHtml(left)}</td>`;
+          } else {
+            leftTd = `<td>${cellHtml(left)}</td>`;
+          }
+        } else {
+          leftTd = '<td></td>';
+        }
+
+        if (skipRight > 0) {
+          skipRight--;
+        } else if (rightNum <= total) {
+          const rs = spanRows(right);
+          if (rs > 1) {
+            right.rowSpan = rs;
+            skipRight = rs - 1;
+            rightTd = `<td class="multi-cell" rowspan="${rs}">${cellHtml(right)}</td>`;
+          } else {
+            rightTd = `<td>${cellHtml(right)}</td>`;
+          }
+        } else {
+          rightTd = '<td></td>';
+        }
+
+        const lSlot = leftNum <= total ? `<td class="slotnum">${leftNum}</td>` : '<td></td>';
+        const rSlot = rightNum <= total ? `<td class="slotnum">${rightNum}</td>` : '<td></td>';
+
+        html += `<tr>${lSlot}${leftTd}${rSlot}${rightTd}</tr>`;
+      }
+
+      html += `</tbody></table>
+        <p style="margin-top:20px;font-size:11px;color:#888;">Generated by Panel Tracker · ${new Date().toLocaleString()}</p>
+        </body></html>`;
+
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => w.print(), 300);
+    }
+
+    function exportPanelExcel() {
+      const panel = getPanel();
+      const job = getCurrentJob();
+      if (!panel) return;
+      const total = panel.spaces || 30;
+      const rows = panelRowCount(panel);
+      const jobName = (job && job.name) || '';
+      const panelName = panel.name || '';
+
+      // Two-column layout; multi-pole listed once on start row with slot range; continuation rows blank circuit
+      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes,Job,Panel\n';
+      if (panel.hasMain) {
+        csv += `—,MAIN,${panel.mainAmps || ''},Main,,,,,——,,,,,,,"${jobName}","${panelName}"\n`;
+      }
+
+      function sideCols(c, num) {
+        if (!c || num > total) return ',,,,,,,';
+        if (c.empty) return `${num},,,,,,,`;
+        if (c.continuation) {
+          // Occupied by multi-pole above — keep slot number, blank circuit (merged visually in PDF)
+          return `${num},,,,,,,`;
+        }
+        const prot = c.prot || '';
+        const notes = (c.notes || '').replace(/"/g, '""');
+        const grp = (c.group || '').replace(/"/g, '""');
+        if (c.tandem) {
+          const circuit = (c.lines || []).map(l => l.name).filter(Boolean).join(' / ');
+          const amps = (c.lines || []).map(l => l.amps).filter(v => v !== '' && v != null).join('/');
+          return `${c.slot},"${circuit.replace(/"/g, '""')}",${amps},Tandem,"${prot}","${grp}","${notes}"`;
+        }
+        return `${c.slotLabel || c.slot},"${(c.name || '').replace(/"/g, '""')}",${c.amps || ''},${c.type},"${prot}","${grp}","${notes}"`;
+      }
+
+      for (let row = 0; row < rows; row++) {
+        const leftNum = row * 2 + 1;
+        const rightNum = row * 2 + 2;
+        const left = leftNum <= total ? exportCellForSlot(panel, leftNum) : null;
+        const right = rightNum <= total ? exportCellForSlot(panel, rightNum) : null;
+        csv += `${sideCols(left, leftNum)},${sideCols(right, rightNum)},"${jobName}","${panelName}"\n`;
+      }
+
+      downloadFile(csv, `${panelName.replace(/[^a-z0-9]/gi, '_')}_schedule.csv`, 'text/csv');
+      toast('Excel/CSV downloaded (2-column layout)');
+    }
+
+    function openBradyExport() {
+      if (!getPanel()) return;
+      const el = document.getElementById('brady-overlay');
+      if (el) el.style.display = 'flex';
+    }
+    function closeBradyExport() {
+      const el = document.getElementById('brady-overlay');
+      if (el) el.style.display = 'none';
+    }
+
+    // column: 'left' | 'right' | 'both'
+    // Brady Breaker Box treats each CSV row as one breaker device.
+    // Pole count is set in the app (Variable Pole Count) — we export Poles so you can match spacing.
+    // 2-pole = one row (one label), not two rows with the same name.
+    function exportBrady(column) {
+      const panel = getPanel();
+      if (!panel) return;
+      closeBradyExport();
+      const total = panel.spaces || 30;
+      const base = (panel.name || 'panel').replace(/[^a-z0-9]/gi, '_');
+
+      function buildColumnCsv(which) {
+        let csv = 'Slot,Circuit Name,Amps,Poles,Column\n';
+        const colLabel = which === 'left' ? 'Left' : 'Right';
+        for (let s = which === 'left' ? 1 : 2; s <= total; s += 2) {
+          const b = breakerAtSlot(panel, s);
+          if (!b) {
+            csv += `${s},,,1,${colLabel}\n`;
+            continue;
+          }
+          // Skip continuation poles of a multi-pole — only the start slot gets a label row
+          if (!b.tandem && b.slot !== s) continue;
+
+          if (b.tandem) {
+            // One physical 1-pole space, two circuits — two label lines (common for tandem)
+            csv += `${b.slot},"${(b.nameA || '').replace(/"/g, '""')}",${b.ampsA || ''},1,${colLabel}\n`;
+            csv += `${b.slot},"${(b.nameB || '').replace(/"/g, '""')}",${b.ampsB || ''},1,${colLabel}\n`;
+          } else {
+            const poles = b.spaces || 1;
+            const name = (b.name || '').replace(/"/g, '""');
+            csv += `${b.slot},"${name}",${b.amps || ''},${poles},${colLabel}\n`;
+          }
+        }
+        return csv;
+      }
+
+      if (column === 'left') {
+        downloadFile(buildColumnCsv('left'), `${base}_brady_LEFT.csv`, 'text/csv');
+        toast('Brady LEFT CSV ready (one row per breaker; Poles column for 2/3-pole)');
+      } else if (column === 'right') {
+        downloadFile(buildColumnCsv('right'), `${base}_brady_RIGHT.csv`, 'text/csv');
+        toast('Brady RIGHT CSV ready (one row per breaker; Poles column for 2/3-pole)');
+      } else {
+        downloadFile(buildColumnCsv('left'), `${base}_brady_LEFT.csv`, 'text/csv');
+        setTimeout(() => {
+          downloadFile(buildColumnCsv('right'), `${base}_brady_RIGHT.csv`, 'text/csv');
+          toast('Brady LEFT + RIGHT CSVs ready');
+        }, 400);
+      }
+    }
+
+    function exportAllData() {
+      downloadFile(JSON.stringify(data, null, 2), 'panel_tracker_backup.json', 'application/json');
+      toast('Full backup downloaded');
+    }
+
+    function exportThisPanel() {
+      const panel = getPanel();
+      const job = getCurrentJob();
+      if (!panel) return;
+      const payload = {
+        type: 'panelTrackerPanel',
+        version: 1,
+        exported: new Date().toISOString(),
+        fromJob: job ? { name: job.name, address: job.address || '' } : null,
+        panel: JSON.parse(JSON.stringify(panel))
+      };
+      const fname = (panel.name || 'panel').replace(/[^a-z0-9]/gi, '_') + '_panel.json';
+      downloadFile(JSON.stringify(payload, null, 2), fname, 'application/json');
+      toast('Panel file ready to send — they Import it into a job');
+    }
+
+    let pendingImport = null;
+
+    function normalizeImportedPanels(parsed) {
+      // Single panel file
+      if (parsed && parsed.type === 'panelTrackerPanel' && parsed.panel) {
+        return {
+          kind: 'panels',
+          jobs: [],
+          panels: [parsed.panel],
+          fromJob: parsed.fromJob || null
+        };
+      }
+      // Raw panel object
+      if (parsed && parsed.breakers && (parsed.name || parsed.spaces) && !parsed.jobs) {
+        return { kind: 'panels', jobs: [], panels: [parsed], fromJob: null };
+      }
+      // Full backup
+      if (parsed && Array.isArray(parsed.jobs)) {
+        const panels = [];
+        parsed.jobs.forEach(j => {
+          (j.panels || []).forEach(p => panels.push({
+            ...p,
+            _fromJobName: j.name || ''
+          }));
+        });
+        return { kind: 'backup', jobs: parsed.jobs, panels, fromJob: null, raw: parsed };
+      }
+      return null;
+    }
+
+    function importBackup(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const norm = normalizeImportedPanels(parsed);
+          if (!norm) {
+            toast('Not a Panel Tracker file');
+            event.target.value = '';
+            return;
+          }
+          pendingImport = norm;
+          openImportOverlay();
+        } catch (err) {
+          toast('Could not read file');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function openImportOverlay() {
+      const n = pendingImport;
+      if (!n) return;
+      const overlay = document.getElementById('import-overlay');
+      const title = document.getElementById('import-title');
+      const summary = document.getElementById('import-summary');
+      const sel = document.getElementById('import-target-job');
+      const replaceBtn = document.getElementById('btn-import-replace');
+      const mergeBtn = document.getElementById('btn-import-merge');
+
+      if (n.kind === 'backup') {
+        const jobCount = n.jobs.length;
+        const panelCount = n.panels.length;
+        title.textContent = 'Import backup';
+        summary.textContent = jobCount + ' job(s), ' + panelCount + ' panel(s) in this file. Add them without deleting yours, or replace everything.';
+        replaceBtn.style.display = 'block';
+        mergeBtn.textContent = 'Merge into my jobs (keep mine)';
+      } else {
+        const names = n.panels.map(p => p.name || 'Panel').join(', ');
+        title.textContent = 'Import panel';
+        summary.textContent = (n.panels.length === 1 ? 'Panel: ' + names : n.panels.length + ' panels: ' + names)
+          + (n.fromJob && n.fromJob.name ? '  (from job “' + n.fromJob.name + '”)' : '');
+        replaceBtn.style.display = 'none';
+        mergeBtn.textContent = 'Add to selected job';
+      }
+
+      sel.innerHTML = '';
+      (data.jobs || []).forEach(j => {
+        const opt = document.createElement('option');
+        opt.value = j.id;
+        opt.textContent = j.name || 'Untitled job';
+        sel.appendChild(opt);
+      });
+      if (currentJobId && [...sel.options].some(o => o.value === currentJobId)) {
+        sel.value = currentJobId;
+      }
+      if (!data.jobs.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(Will create a new job)';
+        sel.appendChild(opt);
+      }
+      overlay.style.display = 'flex';
+    }
+
+    function closeImportOverlay() {
+      const el = document.getElementById('import-overlay');
+      if (el) el.style.display = 'none';
+      pendingImport = null;
+    }
+
+    function clonePanelFresh(p) {
+      const copy = JSON.parse(JSON.stringify(p));
+      copy.id = uid();
+      if (Array.isArray(copy.breakers)) {
+        copy.breakers = copy.breakers.map(b => ({ ...b, id: uid() }));
+      }
+      delete copy._fromJobName;
+      return copy;
+    }
+
+    function ensureImportJob(jobId) {
+      if (jobId) {
+        const existing = (data.jobs || []).find(j => j.id === jobId);
+        if (existing) return existing;
+      }
+      const job = {
+        id: uid(),
+        name: (pendingImport && pendingImport.fromJob && pendingImport.fromJob.name)
+          ? pendingImport.fromJob.name
+          : 'Imported job',
+        address: (pendingImport && pendingImport.fromJob && pendingImport.fromJob.address) || '',
+        notes: '',
+        panels: [],
+        created: Date.now()
+      };
+      data.jobs = data.jobs || [];
+      data.jobs.push(job);
+      return job;
+    }
+
+    function confirmImportMerge() {
+      const n = pendingImport;
+      if (!n) return;
+      const jobId = document.getElementById('import-target-job').value;
+      if (n.kind === 'backup') {
+        // Merge jobs by name when possible; always new IDs so nothing overwrites
+        (n.jobs || []).forEach(srcJob => {
+          let dest = (data.jobs || []).find(j =>
+            (j.name || '').trim().toLowerCase() === (srcJob.name || '').trim().toLowerCase()
+          );
+          if (!dest) {
+            dest = {
+              id: uid(),
+              name: srcJob.name || 'Imported job',
+              address: srcJob.address || '',
+              notes: srcJob.notes || '',
+              contactName: srcJob.contactName || '',
+              phone: srcJob.phone || '',
+              email: srcJob.email || '',
+              panels: [],
+              created: Date.now()
+            };
+            data.jobs.push(dest);
+          }
+          (srcJob.panels || []).forEach(p => {
+            dest.panels = dest.panels || [];
+            dest.panels.push(clonePanelFresh(p));
+          });
+        });
+        saveData();
+        closeImportOverlay();
+        showScreen('jobs');
+        renderJobs();
+        toast('Merged — your existing jobs/panels were kept');
+        return;
+      }
+      const dest = ensureImportJob(jobId);
+      n.panels.forEach(p => {
+        dest.panels = dest.panels || [];
+        dest.panels.push(clonePanelFresh(p));
+      });
+      saveData();
+      currentJobId = dest.id;
+      closeImportOverlay();
+      showScreen('job');
+      renderPanels();
+      toast('Panel added to “' + dest.name + '”');
+    }
+
+    function confirmImportReplace() {
+      const n = pendingImport;
+      if (!n || n.kind !== 'backup' || !n.raw) return;
+      if (!confirm('This deletes ALL your current jobs and panels. Continue?')) return;
+      data = n.raw;
+      if (!data.jobs) data.jobs = [];
+      saveData();
+      currentJobId = null;
+      currentPanelId = null;
+      closeImportOverlay();
+      showScreen('jobs');
+      renderJobs();
+      toast('All data replaced from backup');
+    }
+
+    function downloadFile(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ===================== HELPERS =====================
+    function closeModal(name) {
+      const modal = document.getElementById('modal-' + name);
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+    }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    const DEFAULT_GROUP_ORDER = [
+      'kitchen', 'basement', 'laundry', 'mechanical',
+      'exterior', 'garage', 'mainfloor', '1stfloor', '2ndfloor', 'other'
+    ];
+
+    const GROUP_LABELS = {
+      kitchen: 'Kitchen', basement: 'Basement', laundry: 'Laundry',
+      mechanical: 'Mechanical', exterior: 'Exterior', garage: 'Garage',
+      mainfloor: 'Main floor', '1stfloor': '1st floor', '2ndfloor': '2nd floor',
+      other: 'Other…'
+    };
+
+    function getGroupOrder() {
+      if (!data.groupOrder || !Array.isArray(data.groupOrder) || !data.groupOrder.length) {
+        data.groupOrder = DEFAULT_GROUP_ORDER.slice();
+      }
+      // Ensure all known groups exist; drop unknowns
+      const known = new Set(DEFAULT_GROUP_ORDER);
+      const ordered = data.groupOrder.filter(id => known.has(id));
+      DEFAULT_GROUP_ORDER.forEach(id => {
+        if (!ordered.includes(id)) ordered.push(id);
+      });
+      data.groupOrder = ordered;
+      return ordered;
+    }
+
+    function fillGroupSelect(selected) {
+      const sel = document.getElementById('breaker-group');
+      if (!sel) return;
+      const prev = selected != null ? selected : sel.value;
+      sel.innerHTML = '<option value="">None</option>';
+      getGroupOrder().forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = GROUP_LABELS[id] || id;
+        sel.appendChild(opt);
+      });
+      if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+      else if (prev === 'other' || String(prev).startsWith('other:')) sel.value = 'other';
+      else sel.value = '';
+    }
+
+    function toggleGroupOrderEditor() {
+      const ed = document.getElementById('group-order-editor');
+      if (!ed) return;
+      const show = ed.style.display === 'none';
+      ed.style.display = show ? 'block' : 'none';
+      if (show) renderGroupOrderList();
+    }
+
+    function renderGroupOrderList() {
+      const list = document.getElementById('group-order-list');
+      if (!list) return;
+      const order = getGroupOrder();
+      list.innerHTML = order.map((id, i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #2e2e42;">
+          <span style="flex:1;font-size:0.9rem;">${esc(GROUP_LABELS[id] || id)}</span>
+          <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},1)" ${i===order.length-1?'disabled':''}>↓</button>
+        </div>
+      `).join('');
+    }
+
+    function moveGroupOrder(index, dir) {
+      const order = getGroupOrder().slice();
+      const j = index + dir;
+      if (j < 0 || j >= order.length) return;
+      const t = order[index];
+      order[index] = order[j];
+      order[j] = t;
+      data.groupOrder = order;
+      saveData();
+      fillGroupSelect();
+      renderGroupOrderList();
+    }
+
+    function groupDisplayName(id) {
+      if (!id) return '';
+      if (String(id).startsWith('other:')) return String(id).slice(6) || 'Other';
+      return GROUP_LABELS[id] || id;
+    }
+
+    function onBreakerGroupChange() {
+      const sel = document.getElementById('breaker-group');
+      const custom = document.getElementById('breaker-group-custom');
+      if (!sel || !custom) return;
+      const isOther = sel.value === 'other' || String(sel.value).startsWith('other:');
+      custom.style.display = isOther ? 'block' : 'none';
+      if (isOther && String(sel.value).startsWith('other:') && !custom.value) {
+        custom.value = String(sel.value).slice(6);
+      }
+    }
+
+    function getSelectedGroupValue() {
+      const sel = document.getElementById('breaker-group');
+      if (!sel) return '';
+      if (sel.value === 'other' || String(sel.value).startsWith('other:')) {
+        const name = (document.getElementById('breaker-group-custom').value || '').trim();
+        return name ? ('other:' + name) : 'other';
+      }
+      return sel.value || '';
+    }
+
+    function setSelectedGroupValue(group) {
+      fillGroupSelect();
+      const sel = document.getElementById('breaker-group');
+      const custom = document.getElementById('breaker-group-custom');
+      if (!sel) return;
+      if (group && String(group).startsWith('other:')) {
+        sel.value = 'other';
+        if (custom) {
+          custom.value = String(group).slice(6);
+          custom.style.display = 'block';
+        }
+      } else if (group === 'other') {
+        sel.value = 'other';
+        if (custom) {
+          custom.value = '';
+          custom.style.display = 'block';
+        }
+      } else if (group === 'bath' || group === 'hvac') {
+        sel.value = 'other';
+        if (custom) {
+          custom.value = group === 'bath' ? 'Bath' : 'HVAC';
+          custom.style.display = 'block';
+        }
+      } else {
+        sel.value = group || '';
+        if (custom) {
+          custom.value = '';
+          custom.style.display = 'none';
+        }
+      }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+      ov.addEventListener('click', e => {
+        if (e.target !== ov) return;
+        if (ov.id === 'modal-breaker') {
+          closeBreakerModal();
+        } else {
+          ov.classList.remove('open');
+          ov.style.display = 'none';
+        }
+      });
+    });
+
+    // Init
+
+
+    // Test/debug hook (used by automated tests; harmless in production)
+    window.__panelTrackerTest = {
+      version: 'v2026.10.08',
+      computeColumnMove,
+      computeMoveLayout,
+      spanOf,
+      occupiedSlots,
+      findCollisions,
+      ensureRangeFree,
+      getData: () => data,
+      setData: (d) => { data = d; },
+      getPanel,
+      renderPanelVisual,
+      clearPreviewTransforms,
+      applyPreviewTransforms,
+      captureDragLayoutAnchors,
+      previewMoveTo,
+      moveBreakerToSlot,
+      getDragSnapshot: () => dragSnapshot,
+      setDragSnapshot: (s) => { dragSnapshot = s; },
+      getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length
+    };
+
+    loadData();
+    renderJobs();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      var reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (reloading) return;
+        reloading = true;
+        window.location.reload();
+      });
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
