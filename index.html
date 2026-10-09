@@ -252,6 +252,29 @@
       height: 22px;
       accent-color: var(--accent);
     }
+    .pick-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pick-btn {
+      min-height: 44px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .pick-btn.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
 
     /* Modal */
     .modal-overlay {
@@ -605,7 +628,7 @@
       text-overflow: ellipsis;
       margin-top: 1px;
     }
-    .phase-line.has-warn { color: #fbbf24; }
+    .phase-line.has-warn, .phase-line.warn-only { color: #fbbf24; }
     .phase-warn { margin-right: 2px; }
     .phase-caution {
       margin: 8px 12px 0;
@@ -1070,7 +1093,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09j</span>
+      <span class="app-version" title="App version">v2026.10.09k</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -1109,7 +1132,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="appBack()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09j</span>
+      <span class="app-version">v2026.10.09k</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1247,7 +1270,7 @@
         <label>System
           <button type="button" class="btn btn-sm btn-ghost" onclick="openPhaseInfo()" title="Phase and voltage guide" style="float:right;padding:2px 8px;">ⓘ</button>
         </label>
-        <select id="panel-system" onchange="syncSystemFields()">
+        <select id="panel-system" onchange="syncSystemFields(true)">
           <option value="1p240" selected>Single-phase 120/240</option>
           <option value="1p208">Single-phase 120/208 (network)</option>
           <option value="3p208">3-phase 208Y/120</option>
@@ -1262,6 +1285,14 @@
           <option value="A">A</option>
           <option value="C">C</option>
         </select>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="panel-show-phases">
+        <label for="panel-show-phases" style="margin:0;">Show phases</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="panel-show-phase-load">
+        <label for="panel-show-phase-load" style="margin:0;">Show amp count per phase</label>
       </div>
       <div class="form-group">
         <label>Number of Spaces</label>
@@ -1289,9 +1320,8 @@
       </div>
       <div class="form-group">
         <label>Feed-through lugs feed</label>
-        <select id="panel-lugs-feed">
-          <option value="">None</option>
-        </select>
+        <input type="hidden" id="panel-lugs-feed" value="">
+        <div id="panel-lugs-picks" class="pick-row"></div>
         <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Pass-through lugs to another panel in this job. Does not use a breaker space.</div>
       </div>
       <div class="form-group">
@@ -1405,9 +1435,8 @@
 
       <div class="form-group">
         <label>Feeds subpanel</label>
-        <select id="breaker-feeds">
-          <option value="">None</option>
-        </select>
+        <input type="hidden" id="breaker-feeds" value="">
+        <div id="breaker-feeds-picks" class="pick-row"></div>
         <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Other panels in this job. The tile link opens that panel.</div>
       </div>
 
@@ -2091,6 +2120,8 @@
         document.getElementById('panel-notes').value = p.notes || '';
         document.getElementById('panel-system').value = panelSystem(p);
         document.getElementById('panel-high-leg').value = (p.highLeg === 'A' || p.highLeg === 'C') ? p.highLeg : 'B';
+        document.getElementById('panel-show-phases').checked = panelShowsPhases(p);
+        document.getElementById('panel-show-phase-load').checked = panelShowsPhaseLoad(p);
         fillLugsFeedSelect(p.lugsFeedPanelId || '');
       } else {
         document.getElementById('panel-name').value = '';
@@ -2101,8 +2132,11 @@
         document.getElementById('panel-notes').value = '';
         document.getElementById('panel-system').value = '1p240';
         document.getElementById('panel-high-leg').value = 'B';
+        document.getElementById('panel-show-phases').checked = false;
+        document.getElementById('panel-show-phase-load').checked = false;
         fillLugsFeedSelect('');
       }
+      lastSystemChoice = document.getElementById('panel-system').value || '1p240';
       syncSystemFields();
       document.getElementById('modal-panel').classList.add('open');
       settleHistory();
@@ -2125,6 +2159,8 @@
         mainAmps: parseInt(document.getElementById('panel-main-amps').value, 10) || null,
         notes: document.getElementById('panel-notes').value.trim(),
         system: document.getElementById('panel-system').value || '1p240',
+        showPhases: !!document.getElementById('panel-show-phases').checked,
+        showPhaseLoad: !!document.getElementById('panel-show-phase-load').checked,
         showNumbers: true,
         flipped: false,
         locked: false
@@ -2344,15 +2380,29 @@
       };
     }
 
+    function panelShowsPhases(panel) {
+      if (!panel) return false;
+      if (typeof panel.showPhases === 'boolean') return panel.showPhases;
+      return isThreePhase(panel);
+    }
+
+    function panelShowsPhaseLoad(panel) {
+      if (!panel) return false;
+      if (typeof panel.showPhaseLoad === 'boolean') return panel.showPhaseLoad;
+      return isThreePhase(panel);
+    }
+
     function pdfSlotMark(panel, slot) {
+      if (!panelShowsPhases(panel)) return String(slot);
       const letter = phaseOfSlot(panel, slot);
       const colors = phaseChipColors(panel, letter);
       return slot + '<span style="display:inline-block;margin-left:3px;padding:0 3px;border-radius:3px;font-weight:800;background:' +
         colors.bg + ';color:' + colors.fg + ';border:1px solid ' + colors.border + '">' + letter + '</span>';
     }
 
-    function exportPhaseType(c) {
+    function exportPhaseType(c, panel) {
       if (!c || c.empty || c.continuation) return c && c.type ? c.type : '';
+      if (!panelShowsPhases(panel)) return c.type || '';
       if (c.spd) return 'SPD · ' + (c.phases || '');
       if (c.tandem) return 'Tandem · ' + (c.phases || '');
       if (c.poles === '1P') return '1-pole · ' + (c.volts || '');
@@ -2368,6 +2418,7 @@
       text.className = 'slot-num-text';
       text.textContent = label;
       el.appendChild(text);
+      if (!panelShowsPhases(panel)) return;
       (slots || []).forEach(s => {
         const letter = phaseOfSlot(panel, s);
         const chip = document.createElement('span');
@@ -2384,11 +2435,16 @@
 
     function phaseLineHtml(panel, b) {
       const info = breakerElectrical(panel, b);
-      if (!info.line && !info.warnings.length) return '';
-      const cls = info.warnings.length ? 'phase-line has-warn' : 'phase-line';
       const title = info.warnings.map(w => w.text).join(' ');
       const warn = info.warnings.length ? '<span class="phase-warn">⚠</span>' : '';
-      return `<div class="${cls}"${title ? ` title="${esc(title)}"` : ''}>${warn}${esc(info.line)}</div>`;
+      const titleAttr = title ? ` title="${esc(title)}"` : '';
+      if (!panelShowsPhases(panel)) {
+        if (!info.warnings.length) return '';
+        return `<div class="phase-line warn-only"${titleAttr}>${warn}</div>`;
+      }
+      if (!info.line && !info.warnings.length) return '';
+      const cls = info.warnings.length ? 'phase-line has-warn' : 'phase-line';
+      return `<div class="${cls}"${titleAttr}>${warn}${esc(info.line)}</div>`;
     }
 
     function renderPhaseSummary(panel) {
@@ -2405,6 +2461,11 @@
         }
       }
       if (!bar) return;
+      if (!panelShowsPhaseLoad(panel)) {
+        bar.classList.add('hidden');
+        bar.innerHTML = '';
+        return;
+      }
       const summary = phaseTotals(panel);
       bar.classList.remove('hidden');
       const bits = summary.phases.map(p => {
@@ -2414,11 +2475,26 @@
       bar.innerHTML = `<div class="phase-balance-label">Breaker amps per phase (rough — not actual load)</div><div class="phase-balance-row">${bits}</div>`;
     }
 
-    function syncSystemFields() {
+    let lastSystemChoice = '1p240';
+
+    function systemIsThree(value) {
+      return value === '3p208' || value === '3p480' || value === '3p240d';
+    }
+
+    function syncSystemFields(fromUser) {
       const sys = document.getElementById('panel-system');
       const wrap = document.getElementById('high-leg-wrap');
       if (!sys || !wrap) return;
       wrap.style.display = sys.value === '3p240d' ? 'block' : 'none';
+      const nextThree = systemIsThree(sys.value);
+      const prevThree = systemIsThree(lastSystemChoice);
+      if (fromUser && nextThree !== prevThree) {
+        const phases = document.getElementById('panel-show-phases');
+        const load = document.getElementById('panel-show-phase-load');
+        if (phases) phases.checked = nextThree;
+        if (load) load.checked = nextThree;
+      }
+      lastSystemChoice = sys.value || '1p240';
     }
 
     function refreshBreakerPhaseNote() {
@@ -3907,20 +3983,32 @@
       return n ? parseInt(n, 10) : null;
     }
 
-    function fillLugsFeedSelect(selectedId) {
-      const sel = document.getElementById('panel-lugs-feed');
-      if (!sel) return;
-      const job = getCurrentJob();
-      sel.innerHTML = '<option value="">None</option>';
-      ((job && job.panels) || []).forEach(p => {
-        if (!p || p.id === editingPanelId) return;
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name || 'Panel';
-        sel.appendChild(opt);
+    function fillPickButtons(containerId, inputId, panels, selectedId) {
+      const box = document.getElementById(containerId);
+      const input = document.getElementById(inputId);
+      if (!box || !input) return;
+      const list = (panels || []).filter(Boolean);
+      const chosen = (selectedId && list.some(p => p.id === selectedId)) ? selectedId : '';
+      input.value = chosen;
+      box.textContent = '';
+      [{ id: '', name: 'None' }].concat(list.map(p => ({ id: p.id, name: p.name || 'Panel' }))).forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pick-btn' + (item.id === chosen ? ' selected' : '');
+        btn.textContent = item.name;
+        btn.addEventListener('click', () => {
+          input.value = item.id;
+          box.querySelectorAll('.pick-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+        box.appendChild(btn);
       });
-      if (selectedId && [...sel.options].some(o => o.value === selectedId)) sel.value = selectedId;
-      else sel.value = '';
+    }
+
+    function fillLugsFeedSelect(selectedId) {
+      const job = getCurrentJob();
+      const panels = ((job && job.panels) || []).filter(p => p && p.id !== editingPanelId);
+      fillPickButtons('panel-lugs-picks', 'panel-lugs-feed', panels, selectedId);
     }
 
     function openLugsFeed() {
@@ -3938,20 +4026,10 @@
     }
 
     function fillFeedsPanelSelect(selectedId) {
-      const sel = document.getElementById('breaker-feeds');
-      if (!sel) return;
       const job = getCurrentJob();
       const panel = getPanel();
-      sel.innerHTML = '<option value="">None</option>';
-      ((job && job.panels) || []).forEach(p => {
-        if (!p || (panel && p.id === panel.id)) return;
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name || 'Panel';
-        sel.appendChild(opt);
-      });
-      if (selectedId && [...sel.options].some(o => o.value === selectedId)) sel.value = selectedId;
-      else sel.value = '';
+      const panels = ((job && job.panels) || []).filter(p => p && !(panel && p.id === panel.id));
+      fillPickButtons('breaker-feeds-picks', 'breaker-feeds', panels, selectedId);
     }
 
     function feedsPanelTarget(feedsPanelId) {
@@ -4541,12 +4619,14 @@
       if (highLeg) {
         html += `<div class="caution">CAUTION: ${highLeg} PHASE HAS 208 VOLTS TO GROUND</div>`;
       }
-      const summary = phaseTotals(panel);
-      html += `<div class="balance">Breaker amps per phase (rough — not actual load)<br>` +
-        summary.phases.map(p => {
-          const colors = phaseChipColors(panel, p.phase);
-          return `<b class="${p.off ? 'off' : ''}" style="background:${colors.bg};color:${colors.fg};border-color:${colors.border}">${p.phase} ${p.amps}A</b>`;
-        }).join('') + `</div>`;
+      if (panelShowsPhaseLoad(panel)) {
+        const summary = phaseTotals(panel);
+        html += `<div class="balance">Breaker amps per phase (rough — not actual load)<br>` +
+          summary.phases.map(p => {
+            const colors = phaseChipColors(panel, p.phase);
+            return `<b class="${p.off ? 'off' : ''}" style="background:${colors.bg};color:${colors.fg};border-color:${colors.border}">${p.phase} ${p.amps}A</b>`;
+          }).join('') + `</div>`;
+      }
       const flipped = !!panel.flipped;
       const lugsName = lugsFeedLabel(panel);
       const lugsHtml = lugsName ? `<div class="lugs">Feed-through lugs feed: ${esc(lugsName)}</div>` : '';
@@ -4597,7 +4677,7 @@
         if (!c || c.empty) return '<span class="empty">—</span>';
         // Meta line: protection + group only (pole count is obvious from layout)
         const meta = [c.prot, c.group].filter(Boolean).join(' · ');
-        const phaseHtml = c.phaseLine ? `<div class="sub">${esc(c.phaseLine)}</div>` : '';
+        const phaseHtml = (panelShowsPhases(panel) && c.phaseLine) ? `<div class="sub">${esc(c.phaseLine)}</div>` : '';
         const notesHtml = noteLine(c) ? `<div class="sub">${esc(noteLine(c))}</div>` : '';
         if (c.tandem) {
           return c.lines.map(l =>
@@ -4689,7 +4769,9 @@
       const panelName = panel.name || '';
 
       // Two-column layout matching the screen. Multi-pole listed once on its visual top row.
-      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel,Left Poles,Left Phases,Left Volts,Right Poles,Right Phases,Right Volts\n';
+      const showPhaseCols = panelShowsPhases(panel);
+      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel' +
+        (showPhaseCols ? ',Left Poles,Left Phases,Left Volts,Right Poles,Right Phases,Right Volts' : '') + '\n';
       const lugsName = lugsFeedLabel(panel);
       function csvQuote(value) {
         return '"' + String(value).replace(/"/g, '""') + '"';
@@ -4731,7 +4813,7 @@
         const warnText = (c.warnings || []).map(w => w.text).filter(Boolean).join('; ');
         const notes = [c.notes || '', warnText].filter(Boolean).join(' · ').replace(/"/g, '""');
         const grp = (c.group || '').replace(/"/g, '""');
-        const typed = exportPhaseType(c);
+        const typed = exportPhaseType(c, panel);
         if (c.tandem) {
           const circuit = (c.lines || []).map(l => l.name).filter(Boolean).join(' / ');
           const amps = (c.lines || []).map(l => l.amps).filter(v => v !== '' && v != null).join('/');
@@ -4750,7 +4832,8 @@
         const rightNum = pair.rightNum;
         const left = exportDisplayCell(panel, leftNum);
         const right = exportDisplayCell(panel, rightNum);
-        csv += `${sideCols(left, leftNum == null ? total + 1 : leftNum)},${sideCols(right, rightNum == null ? total + 1 : rightNum)},"${jobName}","${panelName}",${phaseCols(left)},${phaseCols(right)}\n`;
+        csv += `${sideCols(left, leftNum == null ? total + 1 : leftNum)},${sideCols(right, rightNum == null ? total + 1 : rightNum)},"${jobName}","${panelName}"` +
+          (showPhaseCols ? `,${phaseCols(left)},${phaseCols(right)}` : '') + '\n';
       }
       if (panel.flipped) csv += mainRow;
       else csv += lugsCsvRow();
@@ -5836,7 +5919,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09j',
+      version: 'v2026.10.09k',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
@@ -5864,7 +5947,9 @@
       breakerElectrical,
       breakerWarnings,
       phaseTotals,
-      highLegPhase
+      highLegPhase,
+      panelShowsPhases,
+      panelShowsPhaseLoad
     };
 
     initAmpGrids();
