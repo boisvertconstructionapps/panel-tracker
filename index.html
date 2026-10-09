@@ -23,8 +23,6 @@
       --success: #22c55e;
       --danger: #ef4444;
       --warning: #f59e0b;
-      --main-on: #22c55e;
-      --main-off: #64748b;
       --slot-bg: #16161f;
       --breaker-bg: #2a2a3d;
       --tandem-bg: #1e3a5f;
@@ -298,8 +296,8 @@
       margin-bottom: 12px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
+      justify-content: flex-start;
+      cursor: default;
       user-select: none;
     }
 
@@ -328,28 +326,6 @@
       font-weight: 600;
       font-size: 0.95rem;
     }
-
-    .main-handle {
-      width: 48px;
-      height: 28px;
-      border-radius: 6px;
-      background: var(--main-off);
-      position: relative;
-      transition: background 0.2s;
-    }
-    .main-handle.on { background: var(--main-on); }
-    .main-handle::after {
-      content: '';
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: white;
-      border-radius: 4px;
-      top: 4px;
-      left: 4px;
-      transition: left 0.2s;
-    }
-    .main-handle.on::after { left: 24px; }
 
     .slots-grid {
       display: grid;
@@ -558,7 +534,7 @@
       flex: 1 1 auto;
       align-self: stretch;
       background: var(--breaker-bg);
-      padding: 24px 7px 4px;
+      padding: 21px 7px 2px;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -596,13 +572,24 @@
       pointer-events: none;
       width: 100%;
     }
+    .breaker:not(.tandem) .breaker-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .breaker:not(.tandem) .breaker-top,
+    .breaker:not(.tandem) .feeds-badge {
+      flex-shrink: 0;
+    }
 
     .breaker-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 4px;
-      margin-bottom: 3px;
+      margin-bottom: 1px;
       min-height: 16px;
     }
 
@@ -617,8 +604,21 @@
       font-size: 0.88rem;
       font-weight: 700;
       line-height: 1.15;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
       color: #f1f5f9;
+    }
+    .breaker:not(.tandem) .breaker-name {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .spd-amp-value {
+      margin-left: 4px;
+      font-weight: 700;
     }
 
     .breaker.span-2 {
@@ -891,7 +891,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09f</span>
+      <span class="app-version" title="App version">v2026.10.09g</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -930,7 +930,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09f</span>
+      <span class="app-version">v2026.10.09g</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -947,9 +947,8 @@
     <div class="panel-container">
       <div class="panel-scale-wrap" id="panel-scale-wrap">
         <div class="panel-box" id="panel-box">
-          <div class="main-breaker" id="main-breaker" onclick="toggleMainBreaker()">
+          <div class="main-breaker" id="main-breaker">
             <span class="main-breaker-label">MAIN</span>
-            <div class="main-handle" id="main-handle"></div>
           </div>
           <div class="slots-grid" id="slots-grid"></div>
           <button type="button" class="lugs-bar hidden" id="lugs-bar" onclick="openLugsFeed()"></button>
@@ -1241,14 +1240,30 @@
     let currentSpaces = 1;
 
     // Load / Save
+    function stripRetiredPanelFields(root) {
+      const jobs = root && root.jobs;
+      if (!Array.isArray(jobs)) return false;
+      let changed = false;
+      jobs.forEach(job => {
+        (job.panels || []).forEach(panel => {
+          if (panel && Object.prototype.hasOwnProperty.call(panel, 'mainOn')) {
+            delete panel.mainOn;
+            changed = true;
+          }
+        });
+      });
+      return changed;
+    }
     function loadData() {
       try {
         const raw = localStorage.getItem('panelTrackerData');
         if (raw) data = JSON.parse(raw);
       } catch (e) { console.warn(e); }
+      if (stripRetiredPanelFields(data)) saveData();
     }
     function saveData() {
       if (data && Object.prototype.hasOwnProperty.call(data, 'photos')) delete data.photos;
+      stripRetiredPanelFields(data);
       localStorage.setItem('panelTrackerData', JSON.stringify(data));
     }
 
@@ -1496,7 +1511,6 @@
         spaces: parseInt(document.getElementById('panel-spaces').value, 10),
         hasMain: document.getElementById('panel-has-main').checked,
         mainAmps: parseInt(document.getElementById('panel-main-amps').value, 10) || null,
-        mainOn: true,
         notes: document.getElementById('panel-notes').value.trim(),
         showNumbers: true,
         flipped: false,
@@ -1507,11 +1521,11 @@
         // Preserve breakers and state that shouldn't reset
         Object.assign(p, payload, {
           breakers: p.breakers || [],
-          mainOn: p.mainOn !== false,
           showNumbers: p.showNumbers !== false,
           flipped: !!p.flipped,
           locked: !!p.locked
         });
+        delete p.mainOn;
         if (lugsFeedPanelId) p.lugsFeedPanelId = lugsFeedPanelId;
         else delete p.lugsFeedPanelId;
       } else {
@@ -1557,11 +1571,9 @@
 
       // Main breaker
       const mainEl = document.getElementById('main-breaker');
-      const handle = document.getElementById('main-handle');
       if (panel.hasMain) {
         mainEl.classList.remove('hidden');
-        handle.classList.toggle('on', panel.mainOn !== false);
-        document.querySelector('.main-breaker-label').textContent = 
+        document.querySelector('.main-breaker-label').textContent =
           panel.mainAmps ? `MAIN ${panel.mainAmps}A` : 'MAIN';
       } else {
         mainEl.classList.add('hidden');
@@ -1680,10 +1692,13 @@
         }
 
         const feedsHtml = feedsBadgeHtml(b);
-        const spdMark = '<div class="breaker-amps"><span class="spd-badge">SPD</span></div>';
+        const spdMark = (amps) => {
+          const extra = (amps != null && amps !== '') ? ` <span class="spd-amp-value">${esc(amps)}A</span>` : '';
+          return `<div class="breaker-amps"><span class="spd-badge">SPD</span>${extra}</div>`;
+        };
         if (isTandem) {
-          const ampsA = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsA || ''}A</div>`;
-          const ampsB = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsB || ''}A</div>`;
+          const ampsA = b.spd ? spdMark(b.ampsA) : `<div class="breaker-amps">${b.ampsA || ''}A</div>`;
+          const ampsB = b.spd ? spdMark(b.ampsB) : `<div class="breaker-amps">${b.ampsB || ''}A</div>`;
           breakerEl.innerHTML = `
             <div class="breaker-content tandem-split">
               ${badgeHtml ? `<div class="breaker-top">${badgeHtml}</div>` : ''}
@@ -1699,7 +1714,7 @@
             </div>
           `;
         } else {
-          const ampsHtml = b.spd ? spdMark : `<div class="breaker-amps">${b.amps || ''}A</div>`;
+          const ampsHtml = b.spd ? spdMark(b.amps) : `<div class="breaker-amps">${b.amps || ''}A</div>`;
           breakerEl.innerHTML = `
             <div class="breaker-content">
               <div class="breaker-top">
@@ -1742,8 +1757,68 @@
         }
       });
 
+      fitBreakerNames();
       applyPanelTransform(true);
       initPanelPinch();
+    }
+
+    // Shrink a long name just enough for two full lines inside the fixed tile, then ellipsis.
+    function fitBreakerNames() {
+      document.querySelectorAll('.breaker:not(.tandem) .breaker-name').forEach(el => {
+        const full = el.textContent || '';
+        if (!full.trim()) return;
+        el.title = full;
+        el.style.fontSize = '';
+        el.style.lineHeight = '';
+        el.textContent = full;
+        const slot = el.closest('.slot');
+        if (!slot) return;
+        const measure = () => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const rects = [...range.getClientRects()].filter(r => r.width > 0.5 && r.height > 0.5);
+          const line = parseFloat(getComputedStyle(el).lineHeight) || 0;
+          const slotBottom = slot.getBoundingClientRect().bottom;
+          const bottom = rects.length ? rects[rects.length - 1].bottom : 0;
+          const fullLines = rects.length > 0 && rects.every(r => r.height >= line - 1.25);
+          return {
+            rects,
+            ok: rects.length > 0 && rects.length <= 2 && fullLines && bottom <= slotBottom + 0.5
+          };
+        };
+        if (measure().ok) return;
+        el.style.lineHeight = '1.12';
+        let size = parseFloat(getComputedStyle(el).fontSize);
+        if (!Number.isFinite(size)) size = 14;
+        while (size > 12) {
+          size = Math.round((size - 0.5) * 100) / 100;
+          el.style.fontSize = size + 'px';
+          if (measure().ok) return;
+        }
+        const words = full.split(/\s+/).filter(Boolean);
+        let chosen = '';
+        for (let i = 1; i <= words.length; i++) {
+          el.textContent = words.slice(0, i).join(' ');
+          if (measure().ok) chosen = el.textContent;
+          else break;
+        }
+        if (chosen && chosen !== full) {
+          const withEllipsis = chosen + '…';
+          el.textContent = withEllipsis;
+          if (!measure().ok) {
+            const fewer = chosen.split(/\s+/);
+            while (fewer.length > 1) {
+              fewer.pop();
+              el.textContent = fewer.join(' ') + '…';
+              if (measure().ok) return;
+            }
+          }
+          return;
+        }
+        if (!chosen) {
+          el.textContent = (words[0] || full) + '…';
+        }
+      });
     }
 
     function createSlotEl(num, panel) {
@@ -2583,14 +2658,6 @@
       document.addEventListener('touchcancel', onEnd, { capture: true });
     }
 
-    function toggleMainBreaker() {
-      const panel = getPanel();
-      if (!panel || !panel.hasMain) return;
-      panel.mainOn = !(panel.mainOn !== false);
-      saveData();
-      renderPanelVisual();
-    }
-
     function toggleNumbers() {
       const panel = getPanel();
       panel.showNumbers = !(panel.showNumbers !== false);
@@ -2713,12 +2780,12 @@
           setSelectedGroupValue(b.group || '');
           if (b.tandem) {
             document.getElementById('breaker-name-a').value = b.nameA || '';
-            document.getElementById('breaker-amps-a').value = b.ampsA || 15;
+            document.getElementById('breaker-amps-a').value = b.spd ? (b.ampsA ?? '') : (b.ampsA || 15);
             document.getElementById('breaker-name-b').value = b.nameB || '';
-            document.getElementById('breaker-amps-b').value = b.ampsB || 15;
+            document.getElementById('breaker-amps-b').value = b.spd ? (b.ampsB ?? '') : (b.ampsB || 15);
           } else {
             document.getElementById('breaker-name').value = b.name || '';
-            document.getElementById('breaker-amps').value = b.amps || 20;
+            document.getElementById('breaker-amps').value = b.spd ? (b.amps ?? '') : (b.amps || 20);
           }
         } else {
           currentSpaces = 1;
@@ -2800,12 +2867,24 @@
     function syncSpdUi() {
       const on = !!document.getElementById('breaker-spd').checked;
       document.querySelectorAll('.amps-field').forEach(el => {
-        el.style.display = on ? 'none' : '';
+        el.style.display = '';
+      });
+      document.querySelectorAll('.amps-field input').forEach(input => {
+        if (!input.dataset.ampPlaceholder) input.dataset.ampPlaceholder = input.placeholder || '';
+        input.placeholder = on ? 'optional, if on its own breaker' : input.dataset.ampPlaceholder;
       });
       if (on) {
         const name = document.getElementById('breaker-name');
         if (name && !name.value.trim()) name.value = 'Whole House Surge Protector';
       }
+    }
+
+    function readAmpInput(id, spd, fallback) {
+      const raw = String(document.getElementById(id).value ?? '').trim();
+      if (!raw) return spd ? null : fallback;
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n) || n <= 0) return spd ? null : fallback;
+      return n;
     }
 
     function fillLugsFeedSelect(selectedId) {
@@ -3133,8 +3212,8 @@
         }
         payload = {
           tandem: true, nameA, nameB,
-          ampsA: spd ? null : (parseInt(document.getElementById('breaker-amps-a').value, 10) || 15),
-          ampsB: spd ? null : (parseInt(document.getElementById('breaker-amps-b').value, 10) || 15),
+          ampsA: readAmpInput('breaker-amps-a', spd, 15),
+          ampsB: readAmpInput('breaker-amps-b', spd, 15),
           spaces: 1, slot, gfci, afci, spd, notes, group,
           feedsPanelId,
           name: '', amps: null
@@ -3154,7 +3233,7 @@
         }
         payload = {
           tandem: false, name,
-          amps: spd ? null : (parseInt(document.getElementById('breaker-amps').value, 10) || 20),
+          amps: readAmpInput('breaker-amps', spd, 20),
           spaces, slot, gfci, afci, spd, notes, group,
           feedsPanelId,
           nameA: '', nameB: '', ampsA: null, ampsB: null
@@ -3328,15 +3407,16 @@
       const spd = !!b.spd;
       const fed = feedsPanelTarget(b.feedsPanelId);
       const feedsName = fed ? (fed.name || 'Panel') : '';
+      const spdAmpsLabel = (amps) => (amps != null && amps !== '') ? ('SPD ' + amps + 'A') : 'SPD';
       if (b.tandem) {
         return {
           slot: b.slot, empty: false, tandem: true, spd, feedsName,
           name: `${b.nameA || ''} / ${b.nameB || ''}`,
-          amps: spd ? 'SPD' : `${b.ampsA || ''}/${b.ampsB || ''}`,
+          amps: spd ? (spdAmpsLabel(b.ampsA) + '/' + spdAmpsLabel(b.ampsB)) : `${b.ampsA || ''}/${b.ampsB || ''}`,
           type: 'Tandem', prot, group: grp, groupId, notes,
           lines: [
-            { name: b.nameA || '', amps: spd ? 'SPD' : (b.ampsA || '') },
-            { name: b.nameB || '', amps: spd ? 'SPD' : (b.ampsB || '') }
+            { name: b.nameA || '', amps: spd ? spdAmpsLabel(b.ampsA) : (b.ampsA || '') },
+            { name: b.nameB || '', amps: spd ? spdAmpsLabel(b.ampsB) : (b.ampsB || '') }
           ]
         };
       }
@@ -3345,21 +3425,22 @@
       const isStart = b.slot === slot;
       const type = span === 1 ? '1-pole' : span === 2 ? '2-pole' : '3-pole';
       const slotLabel = span > 1 ? used.join('–') : String(b.slot);
+      const ampExport = spd ? spdAmpsLabel(b.amps) : (b.amps || '');
       if (!isStart) {
         // Continuation of multi-pole in lower row — still mark occupied
         return {
           slot, empty: false, continuation: true, spd,
-          name: b.name || '', amps: spd ? 'SPD' : (b.amps || ''),
+          name: b.name || '', amps: ampExport,
           type: type + ' (cont.)', prot, group: grp, groupId, notes: '',
-          lines: [{ name: b.name || '', amps: spd ? 'SPD' : (b.amps || '') }],
+          lines: [{ name: b.name || '', amps: ampExport }],
           slotLabel
         };
       }
       return {
         slot: b.slot, empty: false, spd, feedsName,
-        name: b.name || '', amps: spd ? 'SPD' : (b.amps || ''),
+        name: b.name || '', amps: ampExport,
         type, prot, group: grp, groupId, notes,
-        lines: [{ name: b.name || '', amps: spd ? 'SPD' : (b.amps || '') }],
+        lines: [{ name: b.name || '', amps: ampExport }],
         slotLabel
       };
     }
@@ -3466,8 +3547,10 @@
         return bits.join(' · ');
       }
       function ampText(value, spdFlag) {
-        if (spdFlag || value === 'SPD') return 'SPD';
-        return esc(String(value)) + 'A';
+        const v = value == null ? '' : String(value);
+        if (v.startsWith('SPD')) return esc(v);
+        if (spdFlag) return 'SPD';
+        return esc(v) + 'A';
       }
       function cellHtml(c) {
         if (!c || c.empty) return '<span class="empty">—</span>';
@@ -4701,7 +4784,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09f',
+      version: 'v2026.10.09g',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
