@@ -256,9 +256,17 @@
       padding: 16px 12px 100px;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: safe center;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+    }
+
+    /* Layout box matches the scaled panel so rotate(180deg) cannot sit above the scrollport. */
+    .panel-scale-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      flex: none;
     }
 
     .panel-box {
@@ -269,7 +277,7 @@
       width: 100%;
       max-width: 380px;
       transition: transform 0.2s ease;
-      transform-origin: top center;
+      transform-origin: center center;
     }
 
     .panel-box.flipped {
@@ -307,7 +315,8 @@
       color: #fbbf24;
       border-radius: 8px;
       padding: 10px 12px;
-      margin-bottom: 12px;
+      margin-top: 12px;
+      margin-bottom: 0;
       font-weight: 700;
       font-size: 0.95rem;
       cursor: pointer;
@@ -883,7 +892,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09e</span>
+      <span class="app-version" title="App version">v2026.10.09f</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -922,7 +931,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09e</span>
+      <span class="app-version">v2026.10.09f</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -937,13 +946,15 @@
     </div>
 
     <div class="panel-container">
-      <div class="panel-box" id="panel-box">
-        <div class="main-breaker" id="main-breaker" onclick="toggleMainBreaker()">
-          <span class="main-breaker-label">MAIN</span>
-          <div class="main-handle" id="main-handle"></div>
+      <div class="panel-scale-wrap" id="panel-scale-wrap">
+        <div class="panel-box" id="panel-box">
+          <div class="main-breaker" id="main-breaker" onclick="toggleMainBreaker()">
+            <span class="main-breaker-label">MAIN</span>
+            <div class="main-handle" id="main-handle"></div>
+          </div>
+          <div class="slots-grid" id="slots-grid"></div>
+          <button type="button" class="lugs-bar hidden" id="lugs-bar" onclick="openLugsFeed()"></button>
         </div>
-        <button type="button" class="lugs-bar hidden" id="lugs-bar" onclick="openLugsFeed()"></button>
-        <div class="slots-grid" id="slots-grid"></div>
       </div>
     </div>
 
@@ -1732,7 +1743,7 @@
         }
       });
 
-      applyPanelTransform();
+      applyPanelTransform(true);
       initPanelPinch();
     }
 
@@ -2206,7 +2217,11 @@
       if (span <= 1) return n;
       const r = slotEl.getBoundingClientRect();
       if (r.height < 1) return n;
-      const frac = Math.max(0, Math.min(0.999, (y - r.top) / r.height));
+      // Rects are post-transform. A 180° flip puts the physical end of a span at the visual top.
+      let frac = (y - r.top) / r.height;
+      const panel = getPanel();
+      if (panel && panel.flipped) frac = 1 - frac;
+      frac = Math.max(0, Math.min(0.999, frac));
       const rowOffset = Math.floor(frac * span);
       const result = n + rowOffset * 2;
       return (result >= 1 && result <= total) ? result : n;
@@ -2600,14 +2615,63 @@
     }
 
     let panelZoom = 1;
+    let panelBoxNatural = null;
 
-    function applyPanelTransform() {
+    // Pinch updates scale only. Remeasure (render/resize) lays the box out at zoom 1, then
+    // centers it in a wrapper sized to the scaled box so rotation stays inside the scroll area.
+    function applyPanelTransform(remeasure) {
       const panel = getPanel();
       const box = document.getElementById('panel-box');
-      if (!box) return;
+      const wrap = document.getElementById('panel-scale-wrap');
+      if (!box || !wrap) return;
       const flip = panel && panel.flipped ? ' rotate(180deg)' : '';
-      box.style.transform = `scale(${panelZoom})${flip}`;
+      let holdTransition = false;
+
+      if (remeasure || !panelBoxNatural) {
+        box.style.transition = 'none';
+        holdTransition = true;
+        box.style.transform = 'none';
+        box.style.position = 'relative';
+        box.style.left = 'auto';
+        box.style.top = 'auto';
+        box.style.margin = '0';
+        box.style.width = '';
+        wrap.style.width = '100%';
+        wrap.style.maxWidth = '380px';
+        wrap.style.height = 'auto';
+        const w = box.offsetWidth;
+        const h = box.offsetHeight;
+        if (w > 0 && h > 0) panelBoxNatural = { w: w, h: h };
+      }
+
+      if (!panelBoxNatural) return;
+      const w = panelBoxNatural.w;
+      const h = panelBoxNatural.h;
+      const z = panelZoom;
+      wrap.style.width = (w * z) + 'px';
+      wrap.style.height = (h * z) + 'px';
+      wrap.style.maxWidth = 'none';
+      box.style.position = 'absolute';
+      box.style.left = '50%';
+      box.style.top = '50%';
+      box.style.width = w + 'px';
+      box.style.margin = '0';
+      box.style.marginLeft = (-w / 2) + 'px';
+      box.style.marginTop = (-h / 2) + 'px';
+      box.style.transformOrigin = 'center center';
+      box.style.transform = `scale(${z})${flip}`;
+      if (holdTransition) {
+        // Commit the new transform before the CSS transition is restored so a flip
+        // does not animate out of the wrapper (and tests can measure immediately).
+        box.offsetHeight;
+        box.style.transition = '';
+      }
     }
+
+    window.addEventListener('resize', () => {
+      const panelScreen = document.getElementById('screen-panel');
+      if (panelScreen && panelScreen.classList.contains('active')) applyPanelTransform(true);
+    });
 
     function initPanelPinch() {
       // Pinch is handled by the unified gesture state machine
@@ -3305,6 +3369,33 @@
       return Math.ceil((panel.spaces || 30) / 2);
     }
 
+    // Visual top-to-bottom. Flipped: physical rows reversed and columns swapped.
+    function visualColumnNumbers(panel, visualRow) {
+      const total = panel.spaces || 30;
+      const rows = panelRowCount(panel);
+      const physicalRow = panel.flipped ? (rows - 1 - visualRow) : visualRow;
+      const leftNum = panel.flipped ? physicalRow * 2 + 2 : physicalRow * 2 + 1;
+      const rightNum = panel.flipped ? physicalRow * 2 + 1 : physicalRow * 2 + 2;
+      return {
+        leftNum: leftNum >= 1 && leftNum <= total ? leftNum : null,
+        rightNum: rightNum >= 1 && rightNum <= total ? rightNum : null
+      };
+    }
+
+    // Full breaker content sits on the visual top of a multi-pole span (start when upright, end when flipped).
+    function exportDisplayCell(panel, slotNum) {
+      const total = panel.spaces || 30;
+      if (slotNum == null || slotNum < 1 || slotNum > total) return null;
+      const b = breakerAtSlot(panel, slotNum);
+      if (!b || b.tandem || (b.spaces || 1) <= 1) return exportCellForSlot(panel, slotNum);
+      const used = slotsForBreaker(b.slot, b.spaces || 1).filter(s => s >= 1 && s <= total);
+      const anchor = panel.flipped ? used[used.length - 1] : used[0];
+      if (slotNum !== anchor) return exportCellForSlot(panel, slotNum);
+      const cell = exportCellForSlot(panel, b.slot);
+      cell.visualSpan = panel.flipped ? used.length : Math.max(1, b.spaces || 1);
+      return cell;
+    }
+
     function exportPanelPDF() {
       const panel = getPanel();
       const job = getCurrentJob();
@@ -3326,26 +3417,37 @@
           .amps { color: #333; font-size: 11px; }
           .sub { font-size: 10px; color: #555; }
           .empty { color: #bbb; }
-          .main { font-weight: bold; background: #e8f5e9; text-align: center; padding: 8px; margin-bottom: 8px; border: 1px solid #333; }
+          .main { font-weight: bold; background: #e8f5e9; text-align: center; padding: 8px; margin: 8px 0; border: 1px solid #333; }
+          .lugs { font-weight: bold; background: #fff7ed; text-align: center; padding: 8px; margin: 8px 0; border: 1px solid #c2410c; }
+          .invert-note { font-size: 11px; color: #555; margin: 0 0 8px; }
           .tandem-line { margin: 2px 0; }
           /* Multi-pole: vertically centered in rowspan, left-aligned like other breakers */
           td.multi-cell { vertical-align: middle; text-align: left; }
         </style></head><body>
         <h1>${esc(panel.name)}${panel.isSubpanel ? ' (Subpanel)' : ''}</h1>
         <div class="meta">${esc(job ? job.name : '')} · ${esc(job ? (job.address || '') : '')}<br>
-        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}${lugsFeedLabel(panel) ? '<br>Feed-through lugs feed: ' + esc(lugsFeedLabel(panel)) : ''}</div>
+        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}</div>
       `;
-      if (panel.hasMain) {
-        html += `<div class="main">MAIN ${panel.mainAmps || ''}A</div>`;
+      const flipped = !!panel.flipped;
+      const lugsName = lugsFeedLabel(panel);
+      const lugsHtml = lugsName ? `<div class="lugs">Feed-through lugs feed: ${esc(lugsName)}</div>` : '';
+      const mainHtml = panel.hasMain ? `<div class="main">MAIN ${panel.mainAmps || ''}A</div>` : '';
+      if (flipped) {
+        html += `<div class="invert-note">Panel installed inverted</div>`;
+        html += lugsHtml;
+      } else {
+        html += mainHtml;
       }
+      const leftHead = flipped ? 'Left (even)' : 'Left (odd)';
+      const rightHead = flipped ? 'Right (odd)' : 'Right (even)';
       html += `
         <table class="panel">
           <thead>
             <tr>
               <th style="width:8%">#</th>
-              <th style="width:42%">Left (odd)</th>
+              <th style="width:42%">${leftHead}</th>
               <th style="width:8%">#</th>
-              <th style="width:42%">Right (even)</th>
+              <th style="width:42%">${rightHead}</th>
             </tr>
           </thead>
           <tbody>
@@ -3386,28 +3488,25 @@
           ${notesHtml}`;
       }
 
-      // Multi-pole spans down the column (odd slots or even slots). Track open rowspans.
+      // Multi-pole spans down the visual column. Track open rowspans.
       let skipLeft = 0, skipRight = 0;
+      function spanRows(c) {
+        if (!c || c.empty || c.tandem || c.continuation) return 1;
+        return Math.max(1, c.visualSpan || 1);
+      }
       for (let row = 0; row < rows; row++) {
-        const leftNum = row * 2 + 1;
-        const rightNum = row * 2 + 2;
-        const left = leftNum <= total ? exportCellForSlot(panel, leftNum) : null;
-        const right = rightNum <= total ? exportCellForSlot(panel, rightNum) : null;
-
-        // Compute rowspan for multi-pole start cells
-        function spanRows(c) {
-          if (!c || c.empty || c.tandem || c.continuation) return 1;
-          const b = breakerAtSlot(panel, c.slot);
-          if (!b || b.tandem) return 1;
-          return Math.max(1, b.spaces || 1);
-        }
+        const pair = visualColumnNumbers(panel, row);
+        const leftNum = pair.leftNum;
+        const rightNum = pair.rightNum;
+        const left = exportDisplayCell(panel, leftNum);
+        const right = exportDisplayCell(panel, rightNum);
 
         let leftTd = '';
         let rightTd = '';
         if (skipLeft > 0) {
           skipLeft--;
           // covered by rowspan above — no left content cell this row
-        } else if (leftNum <= total) {
+        } else if (leftNum != null) {
           const rs = spanRows(left);
           if (rs > 1) {
             left.rowSpan = rs;
@@ -3422,7 +3521,7 @@
 
         if (skipRight > 0) {
           skipRight--;
-        } else if (rightNum <= total) {
+        } else if (rightNum != null) {
           const rs = spanRows(right);
           if (rs > 1) {
             right.rowSpan = rs;
@@ -3435,13 +3534,16 @@
           rightTd = '<td></td>';
         }
 
-        const lSlot = leftNum <= total ? `<td class="slotnum">${leftNum}</td>` : '<td></td>';
-        const rSlot = rightNum <= total ? `<td class="slotnum">${rightNum}</td>` : '<td></td>';
+        const lSlot = leftNum != null ? `<td class="slotnum">${leftNum}</td>` : '<td></td>';
+        const rSlot = rightNum != null ? `<td class="slotnum">${rightNum}</td>` : '<td></td>';
 
         html += `<tr>${lSlot}${leftTd}${rSlot}${rightTd}</tr>`;
       }
 
-      html += `</tbody></table>
+      html += `</tbody></table>`;
+      if (flipped) html += mainHtml;
+      else html += lugsHtml;
+      html += `
         <p style="margin-top:20px;font-size:11px;color:#888;">Generated by Panel Tracker · ${new Date().toLocaleString()}</p>
         </body></html>`;
 
@@ -3460,20 +3562,36 @@
       const jobName = (job && job.name) || '';
       const panelName = panel.name || '';
 
-      // Two-column layout; multi-pole listed once on start row with slot range; continuation rows blank circuit
+      // Two-column layout matching the screen. Multi-pole listed once on its visual top row.
       let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel\n';
-      if (panel.hasMain) {
-        csv += `—,MAIN,${panel.mainAmps || ''},Main,,,,,——,,,,,,,"${jobName}","${panelName}"\n`;
-      }
       const lugsName = lugsFeedLabel(panel);
-      if (lugsName) {
+      function csvQuote(value) {
+        return '"' + String(value).replace(/"/g, '""') + '"';
+      }
+      function lugsCsvRow() {
+        if (!lugsName) return '';
         const cols = new Array(16).fill('');
         cols[0] = '—';
-        cols[1] = '"' + ('Feed-through lugs feed: ' + lugsName).replace(/"/g, '""') + '"';
+        cols[1] = csvQuote('Feed-through lugs feed: ' + lugsName);
         cols[7] = '——';
-        cols[14] = '"' + String(jobName).replace(/"/g, '""') + '"';
-        cols[15] = '"' + String(panelName).replace(/"/g, '""') + '"';
-        csv += cols.join(',') + '\n';
+        cols[14] = csvQuote(jobName);
+        cols[15] = csvQuote(panelName);
+        return cols.join(',') + '\n';
+      }
+      const mainRow = panel.hasMain
+        ? `—,MAIN,${panel.mainAmps || ''},Main,,,,,——,,,,,,,"${jobName}","${panelName}"\n`
+        : '';
+      if (panel.flipped) {
+        const note = new Array(16).fill('');
+        note[0] = '—';
+        note[1] = '"Panel installed inverted"';
+        note[7] = '——';
+        note[14] = csvQuote(jobName);
+        note[15] = csvQuote(panelName);
+        csv += note.join(',') + '\n';
+        csv += lugsCsvRow();
+      } else {
+        csv += mainRow;
       }
 
       function sideCols(c, num) {
@@ -3495,12 +3613,15 @@
       }
 
       for (let row = 0; row < rows; row++) {
-        const leftNum = row * 2 + 1;
-        const rightNum = row * 2 + 2;
-        const left = leftNum <= total ? exportCellForSlot(panel, leftNum) : null;
-        const right = rightNum <= total ? exportCellForSlot(panel, rightNum) : null;
-        csv += `${sideCols(left, leftNum)},${sideCols(right, rightNum)},"${jobName}","${panelName}"\n`;
+        const pair = visualColumnNumbers(panel, row);
+        const leftNum = pair.leftNum;
+        const rightNum = pair.rightNum;
+        const left = exportDisplayCell(panel, leftNum);
+        const right = exportDisplayCell(panel, rightNum);
+        csv += `${sideCols(left, leftNum == null ? total + 1 : leftNum)},${sideCols(right, rightNum == null ? total + 1 : rightNum)},"${jobName}","${panelName}"\n`;
       }
+      if (panel.flipped) csv += mainRow;
+      else csv += lugsCsvRow();
 
       downloadFile(csv, `${panelName.replace(/[^a-z0-9]/gi, '_')}_schedule.csv`, 'text/csv');
       toast('Excel/CSV downloaded (2-column layout)');
@@ -4581,7 +4702,10 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09e',
+      version: 'v2026.10.09f',
+      setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
+      getZoom: () => panelZoom,
+      slotNumberFromPoint,
       computeColumnMove,
       computeMoveLayout,
       spanOf,
