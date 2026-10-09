@@ -1,4 +1,4 @@
-var CACHE_NAME = 'panel-tracker-v6';
+var CACHE_NAME = 'panel-tracker-v7';
 
 var PRECACHE_URLS = [
   './',

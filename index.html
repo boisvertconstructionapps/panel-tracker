@@ -278,6 +278,7 @@
 
     .panel-box.flipped .breaker-content,
     .panel-box.flipped .main-breaker-label,
+    .panel-box.flipped .lugs-bar,
     .panel-box.flipped .slot-num {
       transform: rotate(180deg);
     }
@@ -296,6 +297,24 @@
     }
 
     .main-breaker.hidden { display: none; }
+
+    .lugs-bar {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: #1c1917;
+      border: 2px solid #f59e0b;
+      color: #fbbf24;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-align: left;
+      user-select: none;
+    }
+    .lugs-bar.hidden { display: none; }
 
     .main-breaker-label {
       font-weight: 600;
@@ -531,7 +550,7 @@
       flex: 1 1 auto;
       align-self: stretch;
       background: var(--breaker-bg);
-      padding: 14px 7px 6px;
+      padding: 24px 7px 4px;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -576,6 +595,7 @@
       justify-content: space-between;
       gap: 4px;
       margin-bottom: 3px;
+      min-height: 16px;
     }
 
     .breaker-amps {
@@ -863,7 +883,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09d</span>
+      <span class="app-version" title="App version">v2026.10.09e</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -902,7 +922,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09d</span>
+      <span class="app-version">v2026.10.09e</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -922,6 +942,7 @@
           <span class="main-breaker-label">MAIN</span>
           <div class="main-handle" id="main-handle"></div>
         </div>
+        <button type="button" class="lugs-bar hidden" id="lugs-bar" onclick="openLugsFeed()"></button>
         <div class="slots-grid" id="slots-grid"></div>
       </div>
     </div>
@@ -1055,6 +1076,13 @@
       <div class="form-group">
         <label>Main Breaker Amps (if applicable)</label>
         <input type="number" id="panel-main-amps" placeholder="e.g. 200" value="200">
+      </div>
+      <div class="form-group">
+        <label>Feed-through lugs feed</label>
+        <select id="panel-lugs-feed">
+          <option value="">None</option>
+        </select>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Pass-through lugs to another panel in this job. Does not use a breaker space.</div>
       </div>
       <div class="form-group">
         <label>Notes</label>
@@ -1430,6 +1458,7 @@
         document.getElementById('panel-has-main').checked = p.hasMain !== false;
         document.getElementById('panel-main-amps').value = p.mainAmps || 200;
         document.getElementById('panel-notes').value = p.notes || '';
+        fillLugsFeedSelect(p.lugsFeedPanelId || '');
       } else {
         document.getElementById('panel-name').value = '';
         document.getElementById('panel-is-sub').checked = false;
@@ -1437,6 +1466,7 @@
         document.getElementById('panel-has-main').checked = true;
         document.getElementById('panel-main-amps').value = 200;
         document.getElementById('panel-notes').value = '';
+        fillLugsFeedSelect('');
       }
       document.getElementById('modal-panel').classList.add('open');
     }
@@ -1449,6 +1479,7 @@
       const name = document.getElementById('panel-name').value.trim();
       if (!name) { toast('Panel name required'); return; }
       const job = getCurrentJob();
+      const lugsFeedPanelId = (document.getElementById('panel-lugs-feed').value || '').trim();
       const payload = {
         name,
         isSubpanel: document.getElementById('panel-is-sub').checked,
@@ -1471,13 +1502,17 @@
           flipped: !!p.flipped,
           locked: !!p.locked
         });
+        if (lugsFeedPanelId) p.lugsFeedPanelId = lugsFeedPanelId;
+        else delete p.lugsFeedPanelId;
       } else {
-        job.panels.push({
+        const created = {
           id: uid(),
           ...payload,
           breakers: [],
           created: Date.now()
-        });
+        };
+        if (lugsFeedPanelId) created.lugsFeedPanelId = lugsFeedPanelId;
+        job.panels.push(created);
       }
       saveData();
       closeModal('panel');
@@ -1520,6 +1555,18 @@
           panel.mainAmps ? `MAIN ${panel.mainAmps}A` : 'MAIN';
       } else {
         mainEl.classList.add('hidden');
+      }
+
+      const lugsEl = document.getElementById('lugs-bar');
+      const lugsTarget = feedsPanelTarget(panel.lugsFeedPanelId);
+      if (lugsEl) {
+        if (lugsTarget) {
+          lugsEl.classList.remove('hidden');
+          lugsEl.textContent = 'Lugs → ' + (lugsTarget.name || 'Panel');
+        } else {
+          lugsEl.classList.add('hidden');
+          lugsEl.textContent = '';
+        }
       }
 
       // Toolbar state
@@ -1623,7 +1670,7 @@
         }
 
         const feedsHtml = feedsBadgeHtml(b);
-        const spdMark = '<span class="spd-badge">SPD</span>';
+        const spdMark = '<div class="breaker-amps"><span class="spd-badge">SPD</span></div>';
         if (isTandem) {
           const ampsA = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsA || ''}A</div>`;
           const ampsB = b.spd ? spdMark : `<div class="breaker-amps">${b.ampsB || ''}A</div>`;
@@ -2698,6 +2745,36 @@
       }
     }
 
+    function fillLugsFeedSelect(selectedId) {
+      const sel = document.getElementById('panel-lugs-feed');
+      if (!sel) return;
+      const job = getCurrentJob();
+      sel.innerHTML = '<option value="">None</option>';
+      ((job && job.panels) || []).forEach(p => {
+        if (!p || p.id === editingPanelId) return;
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name || 'Panel';
+        sel.appendChild(opt);
+      });
+      if (selectedId && [...sel.options].some(o => o.value === selectedId)) sel.value = selectedId;
+      else sel.value = '';
+    }
+
+    function openLugsFeed() {
+      const panel = getPanel();
+      if (!panel) return;
+      const target = feedsPanelTarget(panel.lugsFeedPanelId);
+      if (!target) {
+        delete panel.lugsFeedPanelId;
+        saveData();
+        renderPanelVisual();
+        toast('That panel was removed');
+        return;
+      }
+      openPanel(target.id);
+    }
+
     function fillFeedsPanelSelect(selectedId) {
       const sel = document.getElementById('breaker-feeds');
       if (!sel) return;
@@ -2719,6 +2796,11 @@
       if (!feedsPanelId) return null;
       const job = getCurrentJob();
       return job && (job.panels || []).find(p => p.id === feedsPanelId) || null;
+    }
+
+    function lugsFeedLabel(panel) {
+      const target = panel && feedsPanelTarget(panel.lugsFeedPanelId);
+      return target ? (target.name || 'Panel') : '';
     }
 
     function feedsBadgeHtml(b) {
@@ -2749,6 +2831,10 @@
       const ids = new Set((job.panels || []).map(p => p && p.id).filter(Boolean));
       let changed = false;
       (job.panels || []).forEach(p => {
+        if (p && p.lugsFeedPanelId && !ids.has(p.lugsFeedPanelId)) {
+          delete p.lugsFeedPanelId;
+          changed = true;
+        }
         (p.breakers || []).forEach(b => {
           if (b && b.feedsPanelId && !ids.has(b.feedsPanelId)) {
             delete b.feedsPanelId;
@@ -2761,6 +2847,11 @@
 
     function remapImportedFeeds(panels, panelMap) {
       (panels || []).forEach(panel => {
+        if (panel && panel.lugsFeedPanelId) {
+          const mappedLugs = panelMap && panelMap[panel.lugsFeedPanelId];
+          if (mappedLugs) panel.lugsFeedPanelId = mappedLugs;
+          else delete panel.lugsFeedPanelId;
+        }
         (panel.breakers || []).forEach(b => {
           if (!b || b.feedsPanelId == null || b.feedsPanelId === '') return;
           const mapped = panelMap && panelMap[b.feedsPanelId];
@@ -3242,7 +3333,7 @@
         </style></head><body>
         <h1>${esc(panel.name)}${panel.isSubpanel ? ' (Subpanel)' : ''}</h1>
         <div class="meta">${esc(job ? job.name : '')} · ${esc(job ? (job.address || '') : '')}<br>
-        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}</div>
+        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}${lugsFeedLabel(panel) ? '<br>Feed-through lugs feed: ' + esc(lugsFeedLabel(panel)) : ''}</div>
       `;
       if (panel.hasMain) {
         html += `<div class="main">MAIN ${panel.mainAmps || ''}A</div>`;
@@ -3373,6 +3464,16 @@
       let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel\n';
       if (panel.hasMain) {
         csv += `—,MAIN,${panel.mainAmps || ''},Main,,,,,——,,,,,,,"${jobName}","${panelName}"\n`;
+      }
+      const lugsName = lugsFeedLabel(panel);
+      if (lugsName) {
+        const cols = new Array(16).fill('');
+        cols[0] = '—';
+        cols[1] = '"' + ('Feed-through lugs feed: ' + lugsName).replace(/"/g, '""') + '"';
+        cols[7] = '——';
+        cols[14] = '"' + String(jobName).replace(/"/g, '""') + '"';
+        cols[15] = '"' + String(panelName).replace(/"/g, '""') + '"';
+        csv += cols.join(',') + '\n';
       }
 
       function sideCols(c, num) {
@@ -4480,7 +4581,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09d',
+      version: 'v2026.10.09e',
       computeColumnMove,
       computeMoveLayout,
       spanOf,
