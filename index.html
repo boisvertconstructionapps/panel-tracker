@@ -575,7 +575,114 @@
       background: rgba(0,0,0,0.4);
       padding: 1px 4px;
       border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      max-width: calc(100% - 10px);
+      line-height: 1.2;
     }
+    .phase-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 12px;
+      padding: 0 3px;
+      border-radius: 3px;
+      border: 1px solid #9ca3af;
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .phase-line {
+      flex-shrink: 0;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+    .phase-line.has-warn { color: #fbbf24; }
+    .phase-warn { margin-right: 2px; }
+    .phase-caution {
+      margin: 8px 12px 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #451a03;
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1.3;
+    }
+    .phase-balance {
+      margin: 8px 12px 0;
+    }
+    .phase-balance-label {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .phase-balance-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .phase-total {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #9ca3af;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+    .phase-total-off { box-shadow: 0 0 0 2px #fbbf24; }
+    .phase-caution.hidden, .phase-balance.hidden { display: none; }
+    .phase-note {
+      margin: 0 0 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #1c1917;
+      border: 1px solid #44403c;
+      color: #e7e5e4;
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+    .phase-note.has-warn {
+      background: #422006;
+      border-color: #f59e0b;
+      color: #fde68a;
+    }
+    .phase-note p { margin: 0 0 4px; }
+    .phase-note p:last-child { margin: 0; }
+    .phase-info {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 10040;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 12px;
+    }
+    .phase-info.open { display: flex; }
+    .phase-info-card {
+      background: #1a1a24;
+      border: 1px solid #2e2e42;
+      border-radius: 14px;
+      padding: 16px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 86vh;
+      overflow: auto;
+    }
+    .phase-info-card h3 { margin: 14px 0 6px; font-size: 1rem; }
+    .phase-info-card h3:first-of-type { margin-top: 0; }
+    .phase-info-card p, .phase-info-card li { font-size: 0.88rem; line-height: 1.4; color: #d6d6e4; }
+    .phase-info-card ul { margin: 4px 0 8px; padding-left: 18px; }
+    .phase-info-card .disclaimer { color: #fbbf24; font-size: 0.82rem; }
 
     .slot-num.hidden { display: none; }
 
@@ -963,7 +1070,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09i</span>
+      <span class="app-version" title="App version">v2026.10.09j</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -1002,11 +1109,13 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="appBack()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09i</span>
+      <span class="app-version">v2026.10.09j</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
     <div class="locked-banner" id="locked-banner">🔒 Placement Locked</div>
+    <div id="phase-caution" class="phase-caution hidden"></div>
+    <div id="phase-balance" class="phase-balance"></div>
 
     <div class="panel-toolbar">
       <button class="btn btn-sm" id="btn-numbers" onclick="toggleNumbers()"># Numbers</button>
@@ -1135,6 +1244,26 @@
         <label for="panel-is-sub" style="margin:0;">This is a Subpanel</label>
       </div>
       <div class="form-group">
+        <label>System
+          <button type="button" class="btn btn-sm btn-ghost" onclick="openPhaseInfo()" title="Phase and voltage guide" style="float:right;padding:2px 8px;">ⓘ</button>
+        </label>
+        <select id="panel-system" onchange="syncSystemFields()">
+          <option value="1p240" selected>Single-phase 120/240</option>
+          <option value="1p208">Single-phase 120/208 (network)</option>
+          <option value="3p208">3-phase 208Y/120</option>
+          <option value="3p480">3-phase 480Y/277</option>
+          <option value="3p240d">3-phase 240 high-leg delta</option>
+        </select>
+      </div>
+      <div class="form-group" id="high-leg-wrap" style="display:none;">
+        <label>High leg on</label>
+        <select id="panel-high-leg">
+          <option value="B" selected>B (standard)</option>
+          <option value="A">A</option>
+          <option value="C">C</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Number of Spaces</label>
         <select id="panel-spaces">
           <option value="4">4</option>
@@ -1254,8 +1383,9 @@
 
       <div class="form-group">
         <label>Starting Slot</label>
-        <select id="breaker-slot"></select>
+        <select id="breaker-slot" onchange="refreshBreakerPhaseNote()"></select>
       </div>
+      <div id="breaker-phase-note" class="phase-note" style="display:none;"></div>
 
       <div class="form-group">
         <label>Group (area)
@@ -1298,6 +1428,55 @@
         <button class="btn btn-ghost" style="flex:1;" onclick="closeBreakerModal()">Done</button>
       </div>
       <div style="font-size:0.72rem;color:var(--text-dim);margin-top:8px;text-align:center;">Changes auto-save · use Undo on the panel if needed</div>
+    </div>
+  </div>
+
+  <div id="phase-info" class="phase-info">
+    <div class="phase-info-card">
+      <div class="photos-sheet-head">
+        <strong>Phases and voltages</strong>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="closePhaseInfo()">Close</button>
+      </div>
+      <h3>What each system is</h3>
+      <ul>
+        <li><b>Single-phase 120/240</b> — houses and small shops. Two hot wires. 120V from either hot to neutral, 240V between them.</li>
+        <li><b>Single-phase 120/208 (network)</b> — apartments and some commercial suites fed from a larger 3-phase service. Still only two hots in this panel. 120V to neutral, 208V between the hots.</li>
+        <li><b>3-phase 208Y/120</b> — stores and light commercial. Three hots. 120V to neutral, 208V between any two, 208V 3-phase for equipment.</li>
+        <li><b>3-phase 480Y/277</b> — larger buildings. 277V to neutral (often lighting), 480V between hots, 480V 3-phase.</li>
+        <li><b>3-phase 240V high-leg delta</b> — older commercial. A and C are 120V to neutral. The high leg is about 208V to neutral and to ground. Between hots is 240V. Three-pole equipment is 240V 3-phase.</li>
+      </ul>
+      <h3>How the rows are phased</h3>
+      <p>Odd slots are the left column, even slots the right. One row is a left slot and the slot beside it, and both sides of that row are the same phase. The phase comes from the real slot number, so turning the panel upside down does not change which slot is which phase.</p>
+      <ul>
+        <li>Single-phase: A, B, A, B… down the panel.</li>
+        <li>3-phase: A, B, C, A, B, C… down the panel.</li>
+      </ul>
+      <h3>Which breakers go where</h3>
+      <ul>
+        <li><b>1-pole</b> uses one row. Voltage to neutral: 120V on 120/240, 120/208, 208Y, and on A or C of a high-leg panel; 277V on 480Y; 208V to neutral on the high leg.</li>
+        <li><b>2-pole</b> uses two rows down the same column. 240V on 120/240 and high-leg, 208V on 120/208 and 208Y, 480V on 480Y.</li>
+        <li><b>3 spaces</b> in a 3-phase panel is a 3-pole, 3-phase breaker on its own. 208V, 480V, or 240V 3-phase, matching the system. No extra prompt.</li>
+        <li>A 3-pole breaker does not belong in a single-phase panel.</li>
+      </ul>
+      <h3>High-leg rules</h3>
+      <ul>
+        <li>The high leg is usually B, the middle phase. If the panel label says A or C, set High leg to match.</li>
+        <li>Mark the high leg orange.</li>
+        <li>Do not put 120V loads on the high leg.</li>
+        <li>A multi-pole breaker that lands on the high leg should be straight 240V-rated, not a 120/240 breaker.</li>
+        <li>The panel needs a caution that this phase is 208 volts to ground.</li>
+      </ul>
+      <h3>Tandems</h3>
+      <p>Most 3-phase panels do not accept tandem (twin) breakers. Check the label on the panel.</p>
+      <h3>Wire colors you will usually see</h3>
+      <p>Colors are not the same on every job. Where more than one system is in the building, post the colors at the gear.</p>
+      <ul>
+        <li>120/240: black, red, white (neutral)</li>
+        <li>208Y/120: black, red, blue, white</li>
+        <li>High-leg delta: black, orange (high leg), blue, white</li>
+        <li>480Y/277: brown, orange, yellow, gray (neutral)</li>
+      </ul>
+      <p class="disclaimer">Reference only — follow NEC, panel label, and local code.</p>
     </div>
   </div>
 
@@ -1365,7 +1544,7 @@
     // and overlay is its own pushState snapshot.
     const OVERLAY_IDS = [
       'modal-job', 'modal-panel', 'modal-breaker',
-      'photos-sheet', 'photo-viewer', 'import-overlay', 'confirm-overlay'
+      'photos-sheet', 'photo-viewer', 'import-overlay', 'phase-info', 'confirm-overlay'
     ];
     let navStack = [];
     let historyReady = false;
@@ -1552,6 +1731,10 @@
       if (id === 'import-overlay') {
         el.style.display = 'none';
         pendingImport = null;
+        return;
+      }
+      if (id === 'phase-info') {
+        el.classList.remove('open');
         return;
       }
       if (id === 'confirm-overlay') {
@@ -1871,7 +2054,7 @@
         div.onclick = () => openPanel(panel.id);
         div.innerHTML = `
           <div class="card-title">${esc(panel.name)} ${panel.isSubpanel ? '<span style="color:var(--warning);font-size:0.8rem;">SUB</span>' : ''}</div>
-          <div class="card-sub">${panel.spaces} spaces · ${breakerCount} breaker${breakerCount !== 1 ? 's' : ''}${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ''}</div>
+          <div class="card-sub">${panel.spaces} spaces · ${breakerCount} breaker${breakerCount !== 1 ? 's' : ''}${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ''}${systemShortLabel(panel) ? ' · ' + esc(systemShortLabel(panel)) : ''}</div>
         `;
         list.appendChild(div);
       });
@@ -1906,6 +2089,8 @@
         document.getElementById('panel-has-main').checked = p.hasMain !== false;
         document.getElementById('panel-main-amps').value = p.mainAmps || 200;
         document.getElementById('panel-notes').value = p.notes || '';
+        document.getElementById('panel-system').value = panelSystem(p);
+        document.getElementById('panel-high-leg').value = (p.highLeg === 'A' || p.highLeg === 'C') ? p.highLeg : 'B';
         fillLugsFeedSelect(p.lugsFeedPanelId || '');
       } else {
         document.getElementById('panel-name').value = '';
@@ -1914,8 +2099,11 @@
         document.getElementById('panel-has-main').checked = true;
         document.getElementById('panel-main-amps').value = 200;
         document.getElementById('panel-notes').value = '';
+        document.getElementById('panel-system').value = '1p240';
+        document.getElementById('panel-high-leg').value = 'B';
         fillLugsFeedSelect('');
       }
+      syncSystemFields();
       document.getElementById('modal-panel').classList.add('open');
       settleHistory();
     }
@@ -1936,10 +2124,12 @@
         hasMain: document.getElementById('panel-has-main').checked,
         mainAmps: parseInt(document.getElementById('panel-main-amps').value, 10) || null,
         notes: document.getElementById('panel-notes').value.trim(),
+        system: document.getElementById('panel-system').value || '1p240',
         showNumbers: true,
         flipped: false,
         locked: false
       };
+      const highLegChoice = document.getElementById('panel-high-leg').value;
       if (editingPanelId) {
         const p = job.panels.find(x => x.id === editingPanelId);
         // Preserve breakers and state that shouldn't reset
@@ -1950,6 +2140,8 @@
           locked: !!p.locked
         });
         delete p.mainOn;
+        if (payload.system === '3p240d') p.highLeg = (highLegChoice === 'A' || highLegChoice === 'C') ? highLegChoice : 'B';
+        else delete p.highLeg;
         if (lugsFeedPanelId) p.lugsFeedPanelId = lugsFeedPanelId;
         else delete p.lugsFeedPanelId;
       } else {
@@ -1959,6 +2151,7 @@
           breakers: [],
           created: Date.now()
         };
+        if (payload.system === '3p240d') created.highLeg = (highLegChoice === 'A' || highLegChoice === 'C') ? highLegChoice : 'B';
         if (lugsFeedPanelId) created.lugsFeedPanelId = lugsFeedPanelId;
         job.panels.push(created);
       }
@@ -1988,6 +2181,276 @@
       toast('Panel deleted');
       await settleHistory();
       return pendingPhotos;
+    }
+
+    // ===================== PHASES =====================
+    function panelSystem(panel) {
+      const s = panel && panel.system;
+      if (s === '1p208' || s === '3p208' || s === '3p480' || s === '3p240d' || s === '1p240') return s;
+      return '1p240';
+    }
+
+    function isThreePhase(panel) {
+      const s = panelSystem(panel);
+      return s === '3p208' || s === '3p480' || s === '3p240d';
+    }
+
+    function highLegPhase(panel) {
+      if (panelSystem(panel) !== '3p240d') return null;
+      const h = panel && panel.highLeg;
+      return (h === 'A' || h === 'B' || h === 'C') ? h : 'B';
+    }
+
+    function systemShortLabel(panel) {
+      const s = panelSystem(panel);
+      if (!panel || !panel.system || s === '1p240') return '';
+      if (s === '1p208') return '120/208';
+      if (s === '3p208') return '208Y/120';
+      if (s === '3p480') return '480Y/277';
+      if (s === '3p240d') return '240Δ high-leg';
+      return '';
+    }
+
+    function systemLongLabel(panel) {
+      const s = panelSystem(panel);
+      if (s === '1p208') return 'Single-phase 120/208';
+      if (s === '3p208') return '3-phase 208Y/120';
+      if (s === '3p480') return '3-phase 480Y/277';
+      if (s === '3p240d') return '3-phase 240V high-leg delta';
+      return 'Single-phase 120/240';
+    }
+
+    function phaseOfSlot(panel, slot) {
+      const row = Math.ceil(Number(slot) / 2);
+      if (!isThreePhase(panel)) return (row % 2 === 1) ? 'A' : 'B';
+      return ['A', 'B', 'C'][(row - 1) % 3];
+    }
+
+    function poleSlotsOf(panel, b) {
+      if (!panel || !b) return [];
+      const total = panel.spaces || 30;
+      const start = Number(b.slot) || 1;
+      if (b.tandem) return (start >= 1 && start <= total) ? [start] : [];
+      const span = Math.max(1, Math.min(3, b.spaces || 1));
+      return slotsForBreaker(start, span).filter(n => n >= 1 && n <= total);
+    }
+
+    function phaseChipColors(panel, letter) {
+      const sys = panelSystem(panel);
+      const high = highLegPhase(panel);
+      const black = { bg: '#111111', fg: '#e5e7eb', border: '#9ca3af' };
+      const red = { bg: '#dc2626', fg: '#ffffff', border: '#991b1b' };
+      const blue = { bg: '#2563eb', fg: '#ffffff', border: '#1d4ed8' };
+      const brown = { bg: '#7c4a2a', fg: '#ffffff', border: '#5c3317' };
+      const orange = { bg: '#f97316', fg: '#1c1917', border: '#c2410c' };
+      const yellow = { bg: '#facc15', fg: '#1c1917', border: '#ca8a04' };
+      if (sys === '3p480') {
+        if (letter === 'A') return brown;
+        if (letter === 'B') return orange;
+        return yellow;
+      }
+      if (sys === '3p240d') {
+        if (letter === high) return orange;
+        if (letter === 'A') return black;
+        return blue;
+      }
+      if (letter === 'A') return black;
+      if (letter === 'B') return red;
+      return blue;
+    }
+
+    function voltageText(panel, span, letters) {
+      const sys = panelSystem(panel);
+      const high = highLegPhase(panel);
+      if (sys === '1p208') return span <= 1 ? '120V' : '208V';
+      if (sys === '3p208') return span <= 1 ? '120V' : '208V';
+      if (sys === '3p480') return span <= 1 ? '277V' : '480V';
+      if (sys === '3p240d') {
+        if (span <= 1) return (letters[0] === high) ? '208V to N' : '120V';
+        return '240V';
+      }
+      return span <= 1 ? '120V' : '240V';
+    }
+
+    function breakerWarnings(panel, b) {
+      const warnings = [];
+      if (!panel || !b) return warnings;
+      const three = isThreePhase(panel);
+      const span = b.tandem ? 1 : (b.spaces || 1);
+      const letters = poleSlotsOf(panel, b).map(s => phaseOfSlot(panel, s));
+      const high = highLegPhase(panel);
+      if (b.tandem && three) {
+        warnings.push({ id: 'tandem3p', text: "Most 3-phase panels don't accept tandems — check the panel label" });
+      }
+      if (!b.tandem && span >= 3 && !three) {
+        warnings.push({ id: 'pole3single', text: "Single-phase panels can't take 3-pole breakers" });
+      }
+      if (high && letters.indexOf(high) >= 0) {
+        if (b.tandem || span <= 1) {
+          warnings.push({ id: 'high1p', text: '1-pole breaker on the high leg (208V to neutral)' });
+        } else {
+          warnings.push({ id: 'highMulti', text: 'Use straight 240V-rated breaker (not 120/240)' });
+        }
+      }
+      return warnings;
+    }
+
+    function breakerElectrical(panel, b) {
+      const letters = poleSlotsOf(panel, b).map(s => phaseOfSlot(panel, s));
+      const span = b && b.tandem ? 1 : Math.max(1, (b && b.spaces) || 1);
+      const volts = voltageText(panel, span, letters);
+      const phases = (isThreePhase(panel) && b && !b.tandem && span >= 3) ? '3Ø' : letters.join('-');
+      const poles = b && b.tandem ? 'Tandem' : (span >= 3 ? '3P' : (span === 2 ? '2P' : '1P'));
+      let line = volts;
+      if (b && b.spd) line = letters.join('-');
+      else if (b && b.tandem) line = volts;
+      else if (span === 2) line = '2P · ' + letters.join('-') + ' · ' + volts;
+      else if (span >= 3 && isThreePhase(panel)) line = '3P · 3Ø · ' + volts;
+      else if (span >= 3) line = '3P · ' + letters.join('-') + ' · ' + volts;
+      return { line: line, poles: poles, phases: phases, volts: volts, letters: letters, warnings: breakerWarnings(panel, b) };
+    }
+
+    function phaseTotals(panel) {
+      const names = isThreePhase(panel) ? ['A', 'B', 'C'] : ['A', 'B'];
+      const totals = { A: 0, B: 0, C: 0 };
+      (panel.breakers || []).forEach(b => {
+        if (!b || b.spd) return;
+        if (b.tandem) {
+          const ph = phaseOfSlot(panel, b.slot);
+          [b.ampsA, b.ampsB].forEach(a => {
+            const n = Number(a);
+            if (a != null && a !== '' && Number.isFinite(n)) totals[ph] += n;
+          });
+          return;
+        }
+        const n = Number(b.amps);
+        if (b.amps == null || b.amps === '' || !Number.isFinite(n)) return;
+        poleSlotsOf(panel, b).forEach(s => { totals[phaseOfSlot(panel, s)] += n; });
+      });
+      const vals = names.map(p => totals[p]);
+      const max = Math.max.apply(null, vals);
+      const min = Math.min.apply(null, vals);
+      const avg = vals.reduce((sum, n) => sum + n, 0) / vals.length;
+      const imbalanced = max > 0 && (max - min) >= 15 && (max - min) / max >= 0.2;
+      let farthest = names[0];
+      let farDist = -1;
+      names.forEach(p => {
+        const d = Math.abs(totals[p] - avg);
+        if (d > farDist) { farDist = d; farthest = p; }
+      });
+      return {
+        imbalanced: imbalanced,
+        phases: names.map(p => ({ phase: p, amps: totals[p], off: imbalanced && p === farthest }))
+      };
+    }
+
+    function pdfSlotMark(panel, slot) {
+      const letter = phaseOfSlot(panel, slot);
+      const colors = phaseChipColors(panel, letter);
+      return slot + '<span style="display:inline-block;margin-left:3px;padding:0 3px;border-radius:3px;font-weight:800;background:' +
+        colors.bg + ';color:' + colors.fg + ';border:1px solid ' + colors.border + '">' + letter + '</span>';
+    }
+
+    function exportPhaseType(c) {
+      if (!c || c.empty || c.continuation) return c && c.type ? c.type : '';
+      if (c.spd) return 'SPD · ' + (c.phases || '');
+      if (c.tandem) return 'Tandem · ' + (c.phases || '');
+      if (c.poles === '1P') return '1-pole · ' + (c.volts || '');
+      if (c.poles === '2P') return '2-pole · ' + (c.phases || '') + ' · ' + (c.volts || '');
+      if (c.poles === '3P') return '3-pole · ' + (c.phases || '') + ' · ' + (c.volts || '');
+      return c.type || '';
+    }
+
+    function fillSlotNum(el, panel, label, slots) {
+      el.className = 'slot-num';
+      el.textContent = '';
+      const text = document.createElement('span');
+      text.className = 'slot-num-text';
+      text.textContent = label;
+      el.appendChild(text);
+      (slots || []).forEach(s => {
+        const letter = phaseOfSlot(panel, s);
+        const chip = document.createElement('span');
+        chip.className = 'phase-chip';
+        chip.dataset.phase = letter;
+        chip.textContent = letter;
+        const colors = phaseChipColors(panel, letter);
+        chip.style.background = colors.bg;
+        chip.style.color = colors.fg;
+        chip.style.borderColor = colors.border;
+        el.appendChild(chip);
+      });
+    }
+
+    function phaseLineHtml(panel, b) {
+      const info = breakerElectrical(panel, b);
+      if (!info.line && !info.warnings.length) return '';
+      const cls = info.warnings.length ? 'phase-line has-warn' : 'phase-line';
+      const title = info.warnings.map(w => w.text).join(' ');
+      const warn = info.warnings.length ? '<span class="phase-warn">⚠</span>' : '';
+      return `<div class="${cls}"${title ? ` title="${esc(title)}"` : ''}>${warn}${esc(info.line)}</div>`;
+    }
+
+    function renderPhaseSummary(panel) {
+      const caution = document.getElementById('phase-caution');
+      const bar = document.getElementById('phase-balance');
+      if (caution) {
+        const high = highLegPhase(panel);
+        if (high) {
+          caution.classList.remove('hidden');
+          caution.textContent = 'CAUTION: ' + high + ' PHASE HAS 208 VOLTS TO GROUND';
+        } else {
+          caution.classList.add('hidden');
+          caution.textContent = '';
+        }
+      }
+      if (!bar) return;
+      const summary = phaseTotals(panel);
+      bar.classList.remove('hidden');
+      const bits = summary.phases.map(p => {
+        const colors = phaseChipColors(panel, p.phase);
+        return `<span class="phase-total${p.off ? ' phase-total-off' : ''}" data-phase="${p.phase}" style="background:${colors.bg};color:${colors.fg};border-color:${colors.border}">${p.phase} ${p.amps}A</span>`;
+      }).join('');
+      bar.innerHTML = `<div class="phase-balance-label">Breaker amps per phase (rough — not actual load)</div><div class="phase-balance-row">${bits}</div>`;
+    }
+
+    function syncSystemFields() {
+      const sys = document.getElementById('panel-system');
+      const wrap = document.getElementById('high-leg-wrap');
+      if (!sys || !wrap) return;
+      wrap.style.display = sys.value === '3p240d' ? 'block' : 'none';
+    }
+
+    function refreshBreakerPhaseNote() {
+      const el = document.getElementById('breaker-phase-note');
+      const panel = getPanel();
+      if (!el) return;
+      if (!panel) { el.style.display = 'none'; return; }
+      const tandem = !!document.getElementById('breaker-tandem')?.checked;
+      const slot = parseInt(document.getElementById('breaker-slot')?.value, 10) || 1;
+      const spaces = tandem ? 1 : Math.max(1, Math.min(3, currentSpaces || 1));
+      const draft = {
+        tandem: tandem,
+        slot: slot,
+        spaces: spaces,
+        spd: !!document.getElementById('breaker-spd')?.checked
+      };
+      const info = breakerElectrical(panel, draft);
+      el.style.display = 'block';
+      el.classList.toggle('has-warn', info.warnings.length > 0);
+      el.innerHTML = `<p>${esc(info.line || '')}</p>` + info.warnings.map(w => `<p>⚠ ${esc(w.text)}</p>`).join('');
+    }
+
+    function openPhaseInfo() {
+      const el = document.getElementById('phase-info');
+      if (!el) return;
+      el.classList.add('open');
+      settleHistory();
+    }
+
+    function closePhaseInfo() {
+      hideOverlay('phase-info');
+      settleHistory();
     }
 
     // ===================== PANEL VISUAL =====================
@@ -2026,6 +2489,7 @@
 
       const box = document.getElementById('panel-box');
       box.classList.toggle('flipped', !!panel.flipped);
+      renderPhaseSummary(panel);
 
       // Build slots
       // Standard residential: two columns, odd left / even right, top to bottom
@@ -2079,8 +2543,7 @@
         firstSlot.innerHTML = '';
         if (panel.showNumbers !== false) {
           const num = document.createElement('div');
-          num.className = 'slot-num';
-          num.textContent = span > 1 ? `${start}–${endSlot}` : String(start);
+          fillSlotNum(num, panel, span > 1 ? `${start}–${endSlot}` : String(start), usedSlots);
           firstSlot.appendChild(num);
         }
 
@@ -2130,6 +2593,7 @@
           breakerEl.innerHTML = `
             <div class="breaker-content tandem-split">
               ${badgeHtml ? `<div class="breaker-top">${badgeHtml}</div>` : ''}
+              ${phaseLineHtml(panel, b)}
               <div class="tandem-half">
                 ${ampsA}
                 <div class="breaker-name">${esc(b.nameA || '')}</div>
@@ -2149,6 +2613,7 @@
                 ${ampsHtml}
                 ${badgeHtml}
               </div>
+              ${phaseLineHtml(panel, b)}
               ${feedsHtml}
               <div class="breaker-name">${esc(b.name || '')}</div>
             </div>
@@ -2255,8 +2720,7 @@
       slot.dataset.slot = num;
       if (panel.showNumbers !== false) {
         const n = document.createElement('div');
-        n.className = 'slot-num';
-        n.textContent = num;
+        fillSlotNum(n, panel, String(num), [num]);
         slot.appendChild(n);
       }
       // Tap empty slot to add a breaker
@@ -3413,6 +3877,7 @@
       document.getElementById('tandem-fields').style.display = isTandem ? 'block' : 'none';
       refreshAllAmpButtons();
       syncSpdUi(false);
+      refreshBreakerPhaseNote();
     }
 
     function syncSpdUi(fromUser) {
@@ -3434,6 +3899,7 @@
         const name = document.getElementById('breaker-name');
         if (name && !name.value.trim()) name.value = 'Whole House Surge Protector';
       }
+      refreshBreakerPhaseNote();
     }
 
     function readAmpInput(id) {
@@ -3955,6 +4421,7 @@
           prot: '', group: '', notes: '', lines: [{ name: '', amps: '' }]
         };
       }
+      const elec = breakerElectrical(panel, b);
       const prot = [b.gfci ? 'GFCI' : '', b.afci ? 'AFCI' : ''].filter(Boolean).join(' + ');
       const grp = groupDisplayName(b.group) || '';
       const groupId = groupKey(b.group);
@@ -3969,6 +4436,7 @@
           name: `${b.nameA || ''} / ${b.nameB || ''}`,
           amps: spd ? (spdAmpsLabel(b.ampsA) + '/' + spdAmpsLabel(b.ampsB)) : `${b.ampsA || ''}/${b.ampsB || ''}`,
           type: 'Tandem', prot, group: grp, groupId, notes,
+          phaseLine: elec.line, poles: elec.poles, phases: elec.phases, volts: elec.volts, warnings: elec.warnings,
           lines: [
             { name: b.nameA || '', amps: spd ? spdAmpsLabel(b.ampsA) : (b.ampsA || '') },
             { name: b.nameB || '', amps: spd ? spdAmpsLabel(b.ampsB) : (b.ampsB || '') }
@@ -3987,6 +4455,7 @@
           slot, empty: false, continuation: true, spd,
           name: b.name || '', amps: ampExport,
           type: type + ' (cont.)', prot, group: grp, groupId, notes: '',
+          phaseLine: elec.line, poles: elec.poles, phases: elec.phases, volts: elec.volts, warnings: elec.warnings,
           lines: [{ name: b.name || '', amps: ampExport }],
           slotLabel
         };
@@ -3995,6 +4464,7 @@
         slot: b.slot, empty: false, spd, feedsName,
         name: b.name || '', amps: ampExport,
         type, prot, group: grp, groupId, notes,
+        phaseLine: elec.line, poles: elec.poles, phases: elec.phases, volts: elec.volts, warnings: elec.warnings,
         lines: [{ name: b.name || '', amps: ampExport }],
         slotLabel
       };
@@ -4055,14 +4525,28 @@
           .main { font-weight: bold; background: #e8f5e9; text-align: center; padding: 8px; margin: 8px 0; border: 1px solid #333; }
           .lugs { font-weight: bold; background: #fff7ed; text-align: center; padding: 8px; margin: 8px 0; border: 1px solid #c2410c; }
           .invert-note { font-size: 11px; color: #555; margin: 0 0 8px; }
+          .caution { font-weight: 800; background: #fff7ed; color: #9a3412; border: 1px solid #c2410c; padding: 8px; margin: 8px 0; }
+          .balance { font-size: 12px; margin: 8px 0; }
+          .balance b { display: inline-block; margin-right: 8px; padding: 2px 6px; border-radius: 4px; border: 1px solid #999; }
+          .balance .off { outline: 2px solid #d97706; }
           .tandem-line { margin: 2px 0; }
           /* Multi-pole: vertically centered in rowspan, left-aligned like other breakers */
           td.multi-cell { vertical-align: middle; text-align: left; }
         </style></head><body>
         <h1>${esc(panel.name)}${panel.isSubpanel ? ' (Subpanel)' : ''}</h1>
         <div class="meta">${esc(job ? job.name : '')} · ${esc(job ? (job.address || '') : '')}<br>
-        ${total} spaces${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}</div>
+        ${total} spaces · ${esc(systemLongLabel(panel))}${panel.hasMain ? ' · Main ' + (panel.mainAmps || '') + 'A' : ' · No main breaker'}</div>
       `;
+      const highLeg = highLegPhase(panel);
+      if (highLeg) {
+        html += `<div class="caution">CAUTION: ${highLeg} PHASE HAS 208 VOLTS TO GROUND</div>`;
+      }
+      const summary = phaseTotals(panel);
+      html += `<div class="balance">Breaker amps per phase (rough — not actual load)<br>` +
+        summary.phases.map(p => {
+          const colors = phaseChipColors(panel, p.phase);
+          return `<b class="${p.off ? 'off' : ''}" style="background:${colors.bg};color:${colors.fg};border-color:${colors.border}">${p.phase} ${p.amps}A</b>`;
+        }).join('') + `</div>`;
       const flipped = !!panel.flipped;
       const lugsName = lugsFeedLabel(panel);
       const lugsHtml = lugsName ? `<div class="lugs">Feed-through lugs feed: ${esc(lugsName)}</div>` : '';
@@ -4099,6 +4583,7 @@
         const bits = [];
         if (c.notes) bits.push(c.notes);
         if (c.feedsName) bits.push('Feeds: ' + c.feedsName);
+        (c.warnings || []).forEach(w => { if (w && w.text) bits.push(w.text); });
         return bits.join(' · ');
       }
       function ampText(value, spdFlag) {
@@ -4112,16 +4597,19 @@
         if (!c || c.empty) return '<span class="empty">—</span>';
         // Meta line: protection + group only (pole count is obvious from layout)
         const meta = [c.prot, c.group].filter(Boolean).join(' · ');
+        const phaseHtml = c.phaseLine ? `<div class="sub">${esc(c.phaseLine)}</div>` : '';
         const notesHtml = noteLine(c) ? `<div class="sub">${esc(noteLine(c))}</div>` : '';
         if (c.tandem) {
           return c.lines.map(l =>
             `<div class="tandem-line"><span class="amps">${ampText(l.amps, c.spd)}</span> <span class="name">${esc(l.name)}</span></div>`
           ).join('') +
+            phaseHtml +
             (meta ? `<div class="sub">${esc(meta)}</div>` : '') +
             notesHtml;
         }
         return `<div class="amps">${ampText(c.amps, c.spd)}</div>
           <div class="name">${esc(c.name)}</div>
+          ${phaseHtml}
           ${meta ? `<div class="sub">${esc(meta)}</div>` : ''}
           ${notesHtml}`;
       }
@@ -4172,8 +4660,8 @@
           rightTd = '<td></td>';
         }
 
-        const lSlot = leftNum != null ? `<td class="slotnum">${leftNum}</td>` : '<td></td>';
-        const rSlot = rightNum != null ? `<td class="slotnum">${rightNum}</td>` : '<td></td>';
+        const lSlot = leftNum != null ? `<td class="slotnum">${pdfSlotMark(panel, leftNum)}</td>` : '<td></td>';
+        const rSlot = rightNum != null ? `<td class="slotnum">${pdfSlotMark(panel, rightNum)}</td>` : '<td></td>';
 
         html += `<tr>${lSlot}${leftTd}${rSlot}${rightTd}</tr>`;
       }
@@ -4201,7 +4689,7 @@
       const panelName = panel.name || '';
 
       // Two-column layout matching the screen. Multi-pole listed once on its visual top row.
-      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel\n';
+      let csv = 'Left Slot,Left Circuit,Left Amps,Left Type,Left GFCI/AFCI,Left Group,Left Notes / Fixtures,Right Slot,Right Circuit,Right Amps,Right Type,Right GFCI/AFCI,Right Group,Right Notes / Fixtures,Job,Panel,Left Poles,Left Phases,Left Volts,Right Poles,Right Phases,Right Volts\n';
       const lugsName = lugsFeedLabel(panel);
       function csvQuote(value) {
         return '"' + String(value).replace(/"/g, '""') + '"';
@@ -4240,14 +4728,20 @@
           return `${num},,,,,,,`;
         }
         const prot = c.prot || '';
-        const notes = (c.notes || '').replace(/"/g, '""');
+        const warnText = (c.warnings || []).map(w => w.text).filter(Boolean).join('; ');
+        const notes = [c.notes || '', warnText].filter(Boolean).join(' · ').replace(/"/g, '""');
         const grp = (c.group || '').replace(/"/g, '""');
+        const typed = exportPhaseType(c);
         if (c.tandem) {
           const circuit = (c.lines || []).map(l => l.name).filter(Boolean).join(' / ');
           const amps = (c.lines || []).map(l => l.amps).filter(v => v !== '' && v != null).join('/');
-          return `${c.slot},"${circuit.replace(/"/g, '""')}",${amps},Tandem,"${prot}","${grp}","${notes}"`;
+          return `${c.slot},"${circuit.replace(/"/g, '""')}",${amps},"${typed}","${prot}","${grp}","${notes}"`;
         }
-        return `${c.slotLabel || c.slot},"${(c.name || '').replace(/"/g, '""')}",${c.amps || ''},${c.type},"${prot}","${grp}","${notes}"`;
+        return `${c.slotLabel || c.slot},"${(c.name || '').replace(/"/g, '""')}",${c.amps || ''},"${typed}","${prot}","${grp}","${notes}"`;
+      }
+      function phaseCols(c) {
+        if (!c || c.empty || c.continuation) return ',,,';
+        return `${csvQuote(c.poles || '')},${csvQuote(c.phases || '')},${csvQuote(c.volts || '')}`;
       }
 
       for (let row = 0; row < rows; row++) {
@@ -4256,7 +4750,7 @@
         const rightNum = pair.rightNum;
         const left = exportDisplayCell(panel, leftNum);
         const right = exportDisplayCell(panel, rightNum);
-        csv += `${sideCols(left, leftNum == null ? total + 1 : leftNum)},${sideCols(right, rightNum == null ? total + 1 : rightNum)},"${jobName}","${panelName}"\n`;
+        csv += `${sideCols(left, leftNum == null ? total + 1 : leftNum)},${sideCols(right, rightNum == null ? total + 1 : rightNum)},"${jobName}","${panelName}",${phaseCols(left)},${phaseCols(right)}\n`;
       }
       if (panel.flipped) csv += mainRow;
       else csv += lugsCsvRow();
@@ -5342,7 +5836,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09i',
+      version: 'v2026.10.09j',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
@@ -5364,7 +5858,13 @@
       getDragSnapshot: () => dragSnapshot,
       setDragSnapshot: (s) => { dragSnapshot = s; },
       getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length,
-      getNav: () => navStack.map(snapCopy)
+      getNav: () => navStack.map(snapCopy),
+      panelSystem,
+      phaseOfSlot,
+      breakerElectrical,
+      breakerWarnings,
+      phaseTotals,
+      highLegPhase
     };
 
     initAmpGrids();
@@ -5376,6 +5876,13 @@
     (function isolateHistoryOverlays() {
       isolatePhotoTouches(document.getElementById('confirm-overlay'));
       isolatePhotoTouches(document.getElementById('import-overlay'));
+      isolatePhotoTouches(document.getElementById('phase-info'));
+      const phaseInfo = document.getElementById('phase-info');
+      if (phaseInfo) {
+        phaseInfo.addEventListener('click', function (e) {
+          if (e.target === phaseInfo) closePhaseInfo();
+        });
+      }
       const confirmOv = document.getElementById('confirm-overlay');
       if (confirmOv) {
         confirmOv.addEventListener('click', function (e) {
