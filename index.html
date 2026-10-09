@@ -192,6 +192,55 @@
     }
     .form-row .form-group { flex: 1; }
 
+    .amp-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .amp-btn, .amp-extra, .amp-other {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 1rem;
+      min-height: 48px;
+      padding: 8px 0;
+      text-align: center;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .amp-btn.selected, .amp-extra.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .amp-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+      background: #14141c;
+      color: var(--text-dim);
+    }
+    .amp-other {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      min-height: 36px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      background: transparent;
+    }
+    .amp-other-input { display: none; margin-top: 8px; }
+    .amps-field.other-open .amp-other-input { display: block; }
+    .amps-field.compact .amp-btn,
+    .amps-field.compact .amp-extra {
+      min-height: 42px;
+      font-size: 0.95rem;
+    }
+    .amps-field.compact { margin-bottom: 10px; }
+
     .checkbox-row {
       display: flex;
       align-items: center;
@@ -891,7 +940,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09g</span>
+      <span class="app-version" title="App version">v2026.10.09h</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -930,7 +979,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="backToJob()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09g</span>
+      <span class="app-version">v2026.10.09h</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1131,9 +1180,11 @@
           <label>Breaker Name *</label>
           <input type="text" id="breaker-name" placeholder="e.g. Kitchen Lights">
         </div>
-        <div class="form-group amps-field">
+        <div class="form-group amps-field" id="amps-field-single">
           <label>Amps</label>
-          <input type="number" id="breaker-amps" placeholder="15, 20, 30..." value="20">
+          <div class="amp-grid" data-amp-for="breaker-amps"></div>
+          <button type="button" class="amp-other" data-amp-for="breaker-amps">Other</button>
+          <input type="number" id="breaker-amps" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
         </div>
       </div>
 
@@ -1142,17 +1193,21 @@
           <label>Circuit A Name *</label>
           <input type="text" id="breaker-name-a" placeholder="e.g. Kitchen Lights">
         </div>
-        <div class="form-group amps-field">
+        <div class="form-group amps-field compact" id="amps-field-a">
           <label>Circuit A Amps</label>
-          <input type="number" id="breaker-amps-a" value="15">
+          <div class="amp-grid" data-amp-for="breaker-amps-a"></div>
+          <button type="button" class="amp-other" data-amp-for="breaker-amps-a">Other</button>
+          <input type="number" id="breaker-amps-a" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
         </div>
         <div class="form-group">
           <label>Circuit B Name *</label>
           <input type="text" id="breaker-name-b" placeholder="e.g. Bath Outlets">
         </div>
-        <div class="form-group amps-field">
+        <div class="form-group amps-field compact" id="amps-field-b">
           <label>Circuit B Amps</label>
-          <input type="number" id="breaker-amps-b" value="15">
+          <div class="amp-grid" data-amp-for="breaker-amps-b"></div>
+          <button type="button" class="amp-other" data-amp-for="breaker-amps-b">Other</button>
+          <input type="number" id="breaker-amps-b" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
         </div>
       </div>
 
@@ -1166,7 +1221,7 @@
           <span>AFCI</span>
         </label>
         <label class="prot-chip spd-chip" for="breaker-spd">
-          <input type="checkbox" id="breaker-spd" onchange="syncSpdUi()">
+          <input type="checkbox" id="breaker-spd" onchange="syncSpdUi(true)">
           <span>⚡ SPD</span>
         </label>
       </div>
@@ -1697,8 +1752,9 @@
           return `<div class="breaker-amps"><span class="spd-badge">SPD</span>${extra}</div>`;
         };
         if (isTandem) {
-          const ampsA = b.spd ? spdMark(b.ampsA) : `<div class="breaker-amps">${b.ampsA || ''}A</div>`;
-          const ampsB = b.spd ? spdMark(b.ampsB) : `<div class="breaker-amps">${b.ampsB || ''}A</div>`;
+          const ampLine = (amps) => (amps != null && amps !== '') ? `<div class="breaker-amps">${esc(amps)}A</div>` : '';
+          const ampsA = b.spd ? spdMark(b.ampsA) : ampLine(b.ampsA);
+          const ampsB = b.spd ? spdMark(b.ampsB) : ampLine(b.ampsB);
           breakerEl.innerHTML = `
             <div class="breaker-content tandem-split">
               ${badgeHtml ? `<div class="breaker-top">${badgeHtml}</div>` : ''}
@@ -1714,7 +1770,7 @@
             </div>
           `;
         } else {
-          const ampsHtml = b.spd ? spdMark(b.amps) : `<div class="breaker-amps">${b.amps || ''}A</div>`;
+          const ampsHtml = b.spd ? spdMark(b.amps) : ((b.amps != null && b.amps !== '') ? `<div class="breaker-amps">${esc(b.amps)}A</div>` : '');
           breakerEl.innerHTML = `
             <div class="breaker-content">
               <div class="breaker-top">
@@ -2744,6 +2800,126 @@
     }
 
     // ===================== BREAKERS =====================
+    const AMP_CHOICES = [15, 20, 25, 30, 40, 50, 60, 100, 150, 200];
+    const TANDEM_AMP_CHOICES = [15, 20, 30];
+
+    function normalizeAmp(value) {
+      if (value == null) return '';
+      const raw = String(value).trim();
+      if (!raw) return '';
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n) || n <= 0) return '';
+      return String(n);
+    }
+
+    function initAmpGrids() {
+      document.querySelectorAll('.amp-grid').forEach(grid => {
+        if (grid.dataset.ready) return;
+        grid.dataset.ready = '1';
+        const inputId = grid.dataset.ampFor;
+        AMP_CHOICES.forEach(n => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'amp-btn';
+          btn.dataset.amps = String(n);
+          btn.textContent = String(n);
+          btn.addEventListener('click', () => toggleAmpChoice(inputId, n));
+          grid.appendChild(btn);
+        });
+      });
+      document.querySelectorAll('.amp-other').forEach(btn => {
+        if (btn.dataset.ready) return;
+        btn.dataset.ready = '1';
+        btn.addEventListener('click', () => openAmpOther(btn.dataset.ampFor));
+      });
+      document.querySelectorAll('.amp-other-input').forEach(input => {
+        if (input.dataset.ampBound) return;
+        input.dataset.ampBound = '1';
+        input.addEventListener('input', () => refreshAmpButtons(input.id));
+        input.addEventListener('blur', () => {
+          const field = input.closest('.amps-field');
+          if (field) field.classList.remove('other-open');
+          refreshAmpButtons(input.id);
+        });
+      });
+    }
+
+    function setAmpValue(inputId, value) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.value = normalizeAmp(value);
+      refreshAmpButtons(inputId);
+    }
+
+    function closeAmpOther(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const field = input.closest('.amps-field');
+      if (field) field.classList.remove('other-open');
+      if (document.activeElement === input) input.blur();
+    }
+
+    function openAmpOther(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const field = input.closest('.amps-field');
+      if (field) field.classList.add('other-open');
+      input.focus();
+    }
+
+    function toggleAmpChoice(inputId, n) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const field = input.closest('.amps-field');
+      const btn = field && field.querySelector('.amp-btn[data-amps="' + n + '"]');
+      if (btn && btn.disabled) return;
+      const next = String(input.value || '') === String(n) ? '' : n;
+      setAmpValue(inputId, next);
+      closeAmpOther(inputId);
+    }
+
+    function refreshAmpButtons(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const field = input.closest('.amps-field');
+      if (!field) return;
+      const tandemOn = !!document.getElementById('breaker-tandem')?.checked;
+      const tandemField = inputId === 'breaker-amps-a' || inputId === 'breaker-amps-b';
+      const limited = tandemOn && tandemField;
+      const allowed = (limited ? TANDEM_AMP_CHOICES : AMP_CHOICES).map(String);
+      const n = normalizeAmp(input.value);
+      if (input.value !== n) input.value = n;
+      field.querySelectorAll('.amp-btn').forEach(btn => {
+        const enabled = allowed.includes(btn.dataset.amps);
+        btn.disabled = !enabled;
+        btn.classList.toggle('selected', enabled && n === btn.dataset.amps);
+      });
+      let extra = field.querySelector('.amp-extra');
+      const showExtra = !!n && !allowed.includes(n);
+      if (showExtra) {
+        if (!extra) {
+          extra = document.createElement('button');
+          extra.type = 'button';
+          extra.className = 'amp-extra selected';
+          extra.addEventListener('click', () => {
+            if (normalizeAmp(input.value) === extra.dataset.amps) setAmpValue(inputId, '');
+            else setAmpValue(inputId, extra.dataset.amps);
+            closeAmpOther(inputId);
+          });
+          field.querySelector('.amp-grid').appendChild(extra);
+        }
+        extra.dataset.amps = n;
+        extra.textContent = n;
+        extra.classList.add('selected');
+      } else if (extra) {
+        extra.remove();
+      }
+    }
+
+    function refreshAllAmpButtons() {
+      ['breaker-amps', 'breaker-amps-a', 'breaker-amps-b'].forEach(refreshAmpButtons);
+    }
+
     function openBreakerModal(editId = null, preferredSlot = null) {
       try {
         const panel = getPanel();
@@ -2752,6 +2928,7 @@
           toast('Unlock the panel first');
           return;
         }
+        initAmpGrids();
         editingBreakerId = editId;
         document.getElementById('breaker-modal-title').textContent = editId ? 'Edit Breaker' : 'Add Breaker';
         document.getElementById('btn-delete-breaker').style.display = editId ? 'block' : 'none';
@@ -2780,13 +2957,13 @@
           setSelectedGroupValue(b.group || '');
           if (b.tandem) {
             document.getElementById('breaker-name-a').value = b.nameA || '';
-            document.getElementById('breaker-amps-a').value = b.spd ? (b.ampsA ?? '') : (b.ampsA || 15);
             document.getElementById('breaker-name-b').value = b.nameB || '';
-            document.getElementById('breaker-amps-b').value = b.spd ? (b.ampsB ?? '') : (b.ampsB || 15);
           } else {
             document.getElementById('breaker-name').value = b.name || '';
-            document.getElementById('breaker-amps').value = b.spd ? (b.amps ?? '') : (b.amps || 20);
           }
+          setAmpValue('breaker-amps', b.amps ?? '');
+          setAmpValue('breaker-amps-a', b.ampsA ?? '');
+          setAmpValue('breaker-amps-b', b.ampsB ?? '');
         } else {
           currentSpaces = 1;
           document.getElementById('breaker-tandem').checked = false;
@@ -2796,16 +2973,17 @@
           document.getElementById('breaker-spd').checked = false;
           document.getElementById('breaker-name').value = '';
           fillFeedsPanelSelect('');
-          document.getElementById('breaker-amps').value = 20;
           document.getElementById('breaker-name-a').value = '';
-          document.getElementById('breaker-amps-a').value = 15;
           document.getElementById('breaker-name-b').value = '';
-          document.getElementById('breaker-amps-b').value = 15;
+          setAmpValue('breaker-amps', 20);
+          setAmpValue('breaker-amps-a', 20);
+          setAmpValue('breaker-amps-b', 20);
           document.getElementById('breaker-notes').value = '';
           setSelectedGroupValue('');
           const slotToUse = preferredSlot || findFirstFreeSlot(panel, 1) || 1;
           document.getElementById('breaker-slot').value = slotToUse;
         }
+        document.querySelectorAll('.amps-field.other-open').forEach(el => el.classList.remove('other-open'));
         toggleTandemFields();
         const modal = document.getElementById('modal-breaker');
         modal.classList.add('open');
@@ -2834,8 +3012,7 @@
           const a = document.getElementById('breaker-name-a');
           if (single && a && !a.value.trim()) a.value = single;
           const amps = document.getElementById('breaker-amps').value;
-          const ampsA = document.getElementById('breaker-amps-a');
-          if (amps && ampsA) ampsA.value = amps;
+          if (amps) setAmpValue('breaker-amps-a', amps);
         } else {
           currentSpaces = Math.max(1, currentSpaces - 1);
         }
@@ -2861,30 +3038,34 @@
       const isTandem = document.getElementById('breaker-tandem').checked;
       document.getElementById('single-fields').style.display = isTandem ? 'none' : 'block';
       document.getElementById('tandem-fields').style.display = isTandem ? 'block' : 'none';
-      syncSpdUi();
+      refreshAllAmpButtons();
+      syncSpdUi(false);
     }
 
-    function syncSpdUi() {
+    function syncSpdUi(fromUser) {
       const on = !!document.getElementById('breaker-spd').checked;
-      document.querySelectorAll('.amps-field').forEach(el => {
-        el.style.display = '';
+      document.querySelectorAll('.amp-other-input').forEach(input => {
+        input.placeholder = on ? 'optional, if on its own breaker' : 'Other amps';
       });
-      document.querySelectorAll('.amps-field input').forEach(input => {
-        if (!input.dataset.ampPlaceholder) input.dataset.ampPlaceholder = input.placeholder || '';
-        input.placeholder = on ? 'optional, if on its own breaker' : input.dataset.ampPlaceholder;
-      });
+      if (fromUser && on) {
+        setAmpValue('breaker-amps', '');
+        setAmpValue('breaker-amps-a', '');
+        setAmpValue('breaker-amps-b', '');
+      } else if (fromUser && !on && !editingBreakerId) {
+        ['breaker-amps', 'breaker-amps-a', 'breaker-amps-b'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && !String(el.value || '').trim()) setAmpValue(id, 20);
+        });
+      }
       if (on) {
         const name = document.getElementById('breaker-name');
         if (name && !name.value.trim()) name.value = 'Whole House Surge Protector';
       }
     }
 
-    function readAmpInput(id, spd, fallback) {
-      const raw = String(document.getElementById(id).value ?? '').trim();
-      if (!raw) return spd ? null : fallback;
-      const n = parseInt(raw, 10);
-      if (!Number.isFinite(n) || n <= 0) return spd ? null : fallback;
-      return n;
+    function readAmpInput(id) {
+      const n = normalizeAmp(document.getElementById(id).value);
+      return n ? parseInt(n, 10) : null;
     }
 
     function fillLugsFeedSelect(selectedId) {
@@ -3212,8 +3393,8 @@
         }
         payload = {
           tandem: true, nameA, nameB,
-          ampsA: readAmpInput('breaker-amps-a', spd, 15),
-          ampsB: readAmpInput('breaker-amps-b', spd, 15),
+          ampsA: readAmpInput('breaker-amps-a'),
+          ampsB: readAmpInput('breaker-amps-b'),
           spaces: 1, slot, gfci, afci, spd, notes, group,
           feedsPanelId,
           name: '', amps: null
@@ -3233,7 +3414,7 @@
         }
         payload = {
           tandem: false, name,
-          amps: readAmpInput('breaker-amps', spd, 20),
+          amps: readAmpInput('breaker-amps'),
           spaces, slot, gfci, afci, spd, notes, group,
           feedsPanelId,
           nameA: '', nameB: '', ampsA: null, ampsB: null
@@ -3548,6 +3729,7 @@
       }
       function ampText(value, spdFlag) {
         const v = value == null ? '' : String(value);
+        if (!v) return '';
         if (v.startsWith('SPD')) return esc(v);
         if (spdFlag) return 'SPD';
         return esc(v) + 'A';
@@ -4784,7 +4966,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09g',
+      version: 'v2026.10.09h',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
@@ -4808,6 +4990,7 @@
       getPreviewShiftCount: () => document.querySelectorAll('.breaker.preview-shift').length
     };
 
+    initAmpGrids();
     installGroupColors();
     initPhotoUi();
     loadData();
