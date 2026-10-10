@@ -165,26 +165,146 @@
     .fab:active { transform: scale(0.94); }
 
     /* Forms */
-    .form-group { margin-bottom: 16px; }
-    .form-group label {
-      display: block;
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-      font-weight: 500;
+    .form-section { margin-bottom: 24px; }
+    .form-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #b0b0c4;
+      margin: 0 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #4a4a62;
     }
+    .form-card {
+      background: #101018;
+      border: 1px solid #3a3a50;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-card .form-group { margin-bottom: 0; }
+    .field-label .btn { min-height: 44px; padding: 0 12px; }
+    .form-group > label,
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+    .field-help {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #b0b0c4;
+      line-height: 1.35;
+      margin: 8px 0 0;
+    }
+    .form-card > .field-help { margin-top: -8px; }
+    #panel-system-picks .pick-btn { flex: 1 1 calc(50% - 8px); }
+    #breaker-nav .btn { min-height: 48px; min-width: 88px; }
     input, select, textarea {
       width: 100%;
+      min-height: 48px;
       padding: 12px 14px;
       border-radius: 10px;
-      border: 1px solid var(--border);
+      border: 1.5px solid #6a6a86;
       background: var(--surface2);
-      color: var(--text);
+      color: #ffffff;
       font-size: 1rem;
+      font-weight: 600;
       outline: none;
     }
+    select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #d4d4e4 50%),
+        linear-gradient(135deg, #d4d4e4 50%, transparent 50%);
+      background-position: calc(100% - 20px) calc(50% - 3px), calc(100% - 14px) calc(50% - 3px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 36px;
+    }
     input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-    textarea { min-height: 80px; resize: vertical; }
+    textarea { min-height: 88px; resize: vertical; font-weight: 500; }
+    input[type="checkbox"], input[type="radio"] {
+      width: auto;
+      min-height: 0;
+      padding: 0;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1.5px solid #6a6a86;
+      background: var(--surface2);
+      cursor: pointer;
+    }
+    .toggle-row > span:first-child {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      flex: 0 0 52px;
+    }
+    .switch input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .switch-ui {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #4a4a60;
+      pointer-events: none;
+    }
+    .switch-ui::after {
+      content: "";
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      left: 3px;
+      top: 3px;
+      border-radius: 50%;
+      background: #ffffff;
+      transition: transform 0.15s ease;
+    }
+    .switch input:checked + .switch-ui { background: var(--accent); }
+    .switch input:checked + .switch-ui::after { transform: translateX(20px); }
+    .form-wide { width: 100%; min-height: 48px; }
+    .form-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .form-actions .btn { width: 100%; min-height: 48px; font-weight: 700; }
+    .form-actions .btn-danger { margin-bottom: 4px; }
+    .icon-hit { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.15rem; }
 
     .form-row {
       display: flex;
@@ -199,19 +319,19 @@
     }
     .amp-btn, .amp-extra, .amp-other {
       width: 100%;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border: 1.5px solid #6a6a86;
+      border-radius: 10px;
       background: var(--surface2);
-      color: var(--text);
+      color: #ffffff;
       font-weight: 800;
       font-size: 1rem;
-      min-height: 48px;
-      padding: 8px 0;
+      min-height: 44px;
+      padding: 8px 4px;
       text-align: center;
       cursor: pointer;
       touch-action: manipulation;
     }
-    .amp-btn.selected, .amp-extra.selected {
+    .amp-btn.selected, .amp-extra.selected, .pick-btn.selected {
       background: var(--accent);
       border-color: var(--accent);
       color: #fff;
@@ -226,54 +346,41 @@
       display: block;
       width: 100%;
       margin-top: 8px;
-      min-height: 36px;
-      font-size: 0.85rem;
+      min-height: 44px;
+      font-size: 0.95rem;
       font-weight: 700;
-      color: var(--text-dim);
-      background: transparent;
+      color: #ffffff;
+      background: var(--surface2);
     }
     .amp-other-input { display: none; margin-top: 8px; }
     .amps-field.other-open .amp-other-input { display: block; }
     .amps-field.compact .amp-btn,
     .amps-field.compact .amp-extra {
-      min-height: 42px;
+      min-height: 44px;
       font-size: 0.95rem;
     }
-    .amps-field.compact { margin-bottom: 10px; }
+    .amps-field.compact { margin-bottom: 0; }
 
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-    }
-    .checkbox-row input[type="checkbox"] {
-      width: 22px;
-      height: 22px;
-      accent-color: var(--accent);
-    }
     .pick-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
+    .pick-3 .pick-btn { flex: 1 1 0; }
     .pick-btn {
-      min-height: 44px;
-      padding: 8px 14px;
+      min-height: 48px;
+      padding: 8px 12px;
       border-radius: 10px;
-      border: 1.5px solid var(--border);
+      border: 1.5px solid #6a6a86;
       background: var(--surface2);
-      color: var(--text);
+      color: #ffffff;
       font: inherit;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
       cursor: pointer;
       touch-action: manipulation;
-    }
-    .pick-btn.selected {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
     }
 
     /* Modal */
@@ -305,9 +412,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       margin-bottom: 18px;
     }
-    .modal-header h2 { font-size: 1.2rem; color: #e8e8f0; }
+    .modal-header h2 { font-size: 1.28rem; font-weight: 800; color: #ffffff; }
 
     /* Panel visual */
     .panel-toolbar {
@@ -450,19 +558,34 @@
     }
 
     /* Protection chips (Siemens colors) */
+    .prot-row { display: flex; gap: 8px; }
     .prot-chip {
+      flex: 1;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 10px 14px;
+      min-height: 48px;
+      padding: 10px 8px;
       border-radius: 10px;
-      font-weight: 600;
+      font-weight: 800;
       font-size: 0.95rem;
       cursor: pointer;
       user-select: none;
       border: 2px solid transparent;
+      position: relative;
     }
-    .prot-chip input { width: 18px; height: 18px; accent-color: currentColor; }
+    .prot-chip input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      inset: 0;
+      margin: 0;
+    }
     .gfci-chip {
       background: #e2e8f0;
       color: #0f172a;
@@ -701,9 +824,18 @@
       max-height: 86vh;
       overflow: auto;
     }
-    .phase-info-card h3 { margin: 14px 0 6px; font-size: 1rem; }
-    .phase-info-card h3:first-of-type { margin-top: 0; }
-    .phase-info-card p, .phase-info-card li { font-size: 0.88rem; line-height: 1.4; color: #d6d6e4; }
+    .phase-info-card h3 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #b0b0c4;
+      margin: 22px 0 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #4a4a62;
+    }
+    .phase-info-card h3:first-of-type { margin-top: 4px; }
+    .phase-info-card p, .phase-info-card li { font-size: 0.95rem; line-height: 1.45; color: #f4f4f8; }
     .phase-info-card ul { margin: 4px 0 8px; padding-left: 18px; }
     .phase-info-card .disclaimer { color: #fbbf24; font-size: 0.82rem; }
 
@@ -860,28 +992,33 @@
     /* Space controls in modal */
     .space-control {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--surface2);
-      border-radius: 10px;
-      padding: 8px 12px;
-      width: fit-content;
+      align-items: stretch;
+      gap: 8px;
+      width: 100%;
     }
     .space-control button {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      border: none;
-      background: var(--border);
-      color: var(--text);
-      font-size: 1.4rem;
-      font-weight: 600;
+      width: 64px;
+      min-height: 48px;
+      border-radius: 10px;
+      border: 1.5px solid #6a6a86;
+      background: var(--surface2);
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: 700;
       cursor: pointer;
     }
     .space-value {
-      font-size: 1.3rem;
-      font-weight: 700;
-      min-width: 28px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      border-radius: 10px;
+      border: 1.5px solid #6a6a86;
+      background: #101018;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #ffffff;
       text-align: center;
     }
 
@@ -950,9 +1087,9 @@
       width: 100%;
       max-width: 360px;
     }
-    .confirm-card p { margin: 0; font-size: 1rem; line-height: 1.4; }
+    .confirm-card p { margin: 0; font-size: 1.05rem; font-weight: 700; color: #ffffff; line-height: 1.4; }
     .confirm-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .confirm-actions .btn { flex: 1; min-height: 48px; }
+    .confirm-actions .btn { flex: 1; min-height: 48px; font-weight: 700; }
 
     .photos-sheet {
       position: fixed;
@@ -982,7 +1119,25 @@
       gap: 8px;
       margin-bottom: 6px;
     }
-    .photos-sheet-head strong { font-size: 1.05rem; }
+    .photos-sheet-head strong { font-size: 1.28rem; font-weight: 800; color: #ffffff; }
+    .import-card {
+      background: #1a1a24;
+      border: 1px solid #2e2e42;
+      border-radius: 16px;
+      padding: 16px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85vh;
+      overflow: auto;
+    }
+    .order-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      border-bottom: 1px solid #3a3a50;
+    }
+    .order-row .btn { min-width: 44px; min-height: 44px; padding: 0; }
     .photo-saving {
       color: var(--warning);
       font-size: 0.85rem;
@@ -990,8 +1145,8 @@
       margin: 6px 0;
     }
     .photos-empty {
-      color: var(--text-dim);
-      font-size: 0.88rem;
+      color: #b0b0c4;
+      font-size: 0.9rem;
       margin: 8px 0 12px;
     }
     .photo-grid {
@@ -1064,8 +1219,10 @@
     }
     .photo-nav.prev { left: 6px; }
     .photo-nav.next { right: 6px; }
-    .photo-viewer-bottom { flex-wrap: wrap; }
-    .photo-viewer-bottom input { flex: 1; min-width: 140px; }
+    .photo-viewer-bottom { flex-direction: column; align-items: stretch; }
+    .photo-viewer-bottom .field-label,
+    .photo-viewer-bottom input,
+    .photo-viewer-bottom .form-actions { width: 100%; }
     .photo-viewer-actions { display: flex; gap: 8px; width: 100%; }
     .photo-viewer-actions .btn { flex: 1; }
 
@@ -1093,7 +1250,7 @@
   <div id="screen-jobs" class="screen active">
     <div class="header">
       <h1>Panel Tracker</h1>
-      <span class="app-version" title="App version">v2026.10.09k</span>
+      <span class="app-version" title="App version">v2026.10.10</span>
       <button class="btn btn-sm btn-ghost" onclick="exportAllData()">Backup</button>
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('import-file').click()">Import</button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
@@ -1132,7 +1289,7 @@
     <div class="header">
       <button class="btn btn-icon btn-ghost" onclick="appBack()">←</button>
       <h1 id="panel-title">Panel</h1>
-      <span class="app-version">v2026.10.09k</span>
+      <span class="app-version">v2026.10.10</span>
       <button class="btn btn-sm btn-ghost" onclick="editCurrentPanel()">Edit</button>
     </div>
 
@@ -1172,19 +1329,19 @@
     <div class="photos-sheet-card">
       <div class="photos-sheet-head">
         <strong>Photos</strong>
-        <button type="button" class="btn btn-sm btn-ghost" onclick="closePhotosSheet()">Close</button>
+        <button type="button" class="btn btn-ghost icon-hit" onclick="closePhotosSheet()" aria-label="Close">✕</button>
       </div>
       <div id="photo-saving" class="photo-saving" style="display:none;">Saving…</div>
       <p id="photos-empty" class="photos-empty">No photos for this panel yet. Add one from the camera or gallery.</p>
       <div id="photo-grid" class="photo-grid"></div>
-      <button type="button" class="btn btn-primary" style="width:100%;" onclick="document.getElementById('photo-input').click()">Add photo</button>
+      <button type="button" class="btn btn-primary form-wide" onclick="document.getElementById('photo-input').click()">Add photo</button>
       <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="addPanelPhotos(event)">
     </div>
   </div>
 
   <div id="photo-viewer" class="photo-viewer">
     <div class="photo-viewer-top">
-      <button type="button" class="btn btn-sm btn-ghost" onclick="closePhotoViewer()">Close</button>
+      <button type="button" class="btn btn-ghost icon-hit" onclick="closePhotoViewer()" aria-label="Close">✕</button>
       <span id="photo-viewer-count"></span>
     </div>
     <div class="photo-viewer-stage" id="photo-viewer-stage">
@@ -1193,26 +1350,32 @@
       <button type="button" class="photo-nav next" onclick="stepPhoto(1)" aria-label="Next photo">›</button>
     </div>
     <div class="photo-viewer-bottom">
-      <input type="text" id="photo-caption" placeholder="Caption (optional)" maxlength="200" onchange="saveViewerCaption()">
-      <div class="photo-viewer-actions">
+      <label class="field-label" for="photo-caption">Caption</label>
+      <input type="text" id="photo-caption" placeholder="Optional" maxlength="200" onchange="saveViewerCaption()">
+      <div class="form-actions">
+        <button type="button" class="btn btn-danger" onclick="deleteViewerPhoto()">Delete photo</button>
         <button type="button" class="btn btn-primary" onclick="shareOrSavePhoto()">Save / Share</button>
-        <button type="button" class="btn btn-danger" onclick="deleteViewerPhoto()">Delete</button>
       </div>
     </div>
   </div>
 
   <!-- Import merge picker -->
   <div id="import-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:flex-end;justify-content:center;padding:12px;">
-    <div style="background:#1a1a24;border:1px solid #2e2e42;border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:85vh;overflow:auto;">
-      <div style="font-size:1.05rem;font-weight:600;margin-bottom:6px;" id="import-title">Import</div>
-      <div style="font-size:0.85rem;color:#9a9ab0;margin-bottom:12px;" id="import-summary"></div>
+    <div class="import-card">
+      <div class="photos-sheet-head">
+        <strong id="import-title">Import</strong>
+        <button type="button" class="btn btn-ghost icon-hit" onclick="closeImportOverlay()" aria-label="Close">✕</button>
+      </div>
+      <p class="field-help" id="import-summary" style="margin-bottom:16px;"></p>
       <div class="form-group" id="import-job-wrap">
-        <label>Add panel(s) to this job</label>
+        <label for="import-target-job">Add panels to</label>
         <select id="import-target-job"></select>
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" id="btn-import-merge" onclick="confirmImportMerge()">Add to job (keep mine)</button>
-      <button class="btn btn-ghost" style="width:100%;margin-bottom:8px;display:none;" id="btn-import-replace" onclick="confirmImportReplace()">Replace ALL my data</button>
-      <button class="btn btn-ghost" style="width:100%;" onclick="closeImportOverlay()">Cancel</button>
+      <div class="form-actions">
+        <button class="btn btn-danger" style="display:none;" id="btn-import-replace" onclick="confirmImportReplace()">Replace all my data</button>
+        <button class="btn btn-primary" id="btn-import-merge" onclick="confirmImportMerge()">Add to job</button>
+        <button class="btn btn-ghost" onclick="closeImportOverlay()">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -1221,32 +1384,47 @@
     <div class="modal">
       <div class="modal-header">
         <h2 id="job-modal-title">New Job</h2>
-        <button class="btn btn-sm btn-ghost" onclick="closeModal('job')">✕</button>
+        <button class="btn btn-ghost icon-hit" onclick="closeModal('job')" aria-label="Close">✕</button>
       </div>
-      <div class="form-group">
-        <label>Job Name *</label>
-        <input type="text" id="job-name" placeholder="e.g. Smith Residence">
-      </div>
-      <div class="form-group">
-        <label>Address</label>
-        <input type="text" id="job-address-input" placeholder="Street, City">
-      </div>
-      <div class="form-group">
-        <label>Customer / Contact</label>
-        <input type="text" id="job-contact-name" placeholder="Name">
-        <button class="btn btn-sm contact-btn" onclick="pickContact()" id="btn-pick-contact">📱 Import from Contacts</button>
-      </div>
-      <div class="form-group">
-        <label>Phone</label>
-        <input type="tel" id="job-phone" placeholder="Phone number">
-      </div>
-      <div class="form-group">
-        <label>Notes</label>
-        <textarea id="job-notes" placeholder="Optional notes"></textarea>
-      </div>
-      <div style="display:flex; gap:10px; margin-top:20px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="saveJob()">Save</button>
-        <button class="btn btn-danger btn-sm" id="btn-delete-job" style="display:none;" onclick="deleteJob()">Delete</button>
+      <section class="form-section">
+        <h3 class="form-section-title">Basics</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="job-name">Job name</label>
+            <input type="text" id="job-name" placeholder="Smith Residence">
+          </div>
+          <div class="form-group">
+            <label for="job-address-input">Address</label>
+            <input type="text" id="job-address-input" placeholder="Street, City">
+          </div>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3 class="form-section-title">Contact</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="job-contact-name">Customer</label>
+            <input type="text" id="job-contact-name" placeholder="Name">
+          </div>
+          <button class="btn btn-ghost form-wide" type="button" onclick="pickContact()" id="btn-pick-contact">Import from Contacts</button>
+          <div class="form-group">
+            <label for="job-phone">Phone</label>
+            <input type="tel" id="job-phone" placeholder="Phone number">
+          </div>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3 class="form-section-title">Notes</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="job-notes">Notes</label>
+            <textarea id="job-notes" placeholder="Optional"></textarea>
+          </div>
+        </div>
+      </section>
+      <div class="form-actions">
+        <button class="btn btn-danger" id="btn-delete-job" style="display:none;" onclick="deleteJob()">Delete job</button>
+        <button class="btn btn-primary" onclick="saveJob()">Save</button>
       </div>
     </div>
   </div>
@@ -1256,81 +1434,115 @@
     <div class="modal">
       <div class="modal-header">
         <h2 id="panel-modal-title">New Panel</h2>
-        <button class="btn btn-sm btn-ghost" onclick="closeModal('panel')">✕</button>
+        <button class="btn btn-ghost icon-hit" onclick="closeModal('panel')" aria-label="Close">✕</button>
       </div>
-      <div class="form-group">
-        <label>Panel Name *</label>
-        <input type="text" id="panel-name" placeholder="e.g. Main Panel, Garage Sub">
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="panel-is-sub">
-        <label for="panel-is-sub" style="margin:0;">This is a Subpanel</label>
-      </div>
-      <div class="form-group">
-        <label>System
-          <button type="button" class="btn btn-sm btn-ghost" onclick="openPhaseInfo()" title="Phase and voltage guide" style="float:right;padding:2px 8px;">ⓘ</button>
-        </label>
-        <select id="panel-system" onchange="syncSystemFields(true)">
-          <option value="1p240" selected>Single-phase 120/240</option>
-          <option value="1p208">Single-phase 120/208 (network)</option>
-          <option value="3p208">3-phase 208Y/120</option>
-          <option value="3p480">3-phase 480Y/277</option>
-          <option value="3p240d">3-phase 240 high-leg delta</option>
-        </select>
-      </div>
-      <div class="form-group" id="high-leg-wrap" style="display:none;">
-        <label>High leg on</label>
-        <select id="panel-high-leg">
-          <option value="B" selected>B (standard)</option>
-          <option value="A">A</option>
-          <option value="C">C</option>
-        </select>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="panel-show-phases">
-        <label for="panel-show-phases" style="margin:0;">Show phases</label>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="panel-show-phase-load">
-        <label for="panel-show-phase-load" style="margin:0;">Show amp count per phase</label>
-      </div>
-      <div class="form-group">
-        <label>Number of Spaces</label>
-        <select id="panel-spaces">
-          <option value="4">4</option>
-          <option value="8">8</option>
-          <option value="12">12</option>
-          <option value="16">16</option>
-          <option value="20">20</option>
-          <option value="24">24</option>
-          <option value="30" selected>30</option>
-          <option value="40">40</option>
-          <option value="42">42</option>
-          <option value="48">48</option>
-          <option value="60">60</option>
-        </select>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="panel-has-main" checked>
-        <label for="panel-has-main" style="margin:0;">Has Main Breaker</label>
-      </div>
-      <div class="form-group">
-        <label>Main Breaker Amps (if applicable)</label>
-        <input type="number" id="panel-main-amps" placeholder="e.g. 200" value="200">
-      </div>
-      <div class="form-group">
-        <label>Feed-through lugs feed</label>
-        <input type="hidden" id="panel-lugs-feed" value="">
-        <div id="panel-lugs-picks" class="pick-row"></div>
-        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Pass-through lugs to another panel in this job. Does not use a breaker space.</div>
-      </div>
-      <div class="form-group">
-        <label>Notes</label>
-        <textarea id="panel-notes" placeholder="Location, brand, etc."></textarea>
-      </div>
-      <div style="display:flex; gap:10px; margin-top:20px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="savePanel()">Save</button>
-        <button class="btn btn-danger btn-sm" id="btn-delete-panel" style="display:none;" onclick="deletePanel()">Delete</button>
+      <section class="form-section">
+        <h3 class="form-section-title">Basics</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="panel-name">Panel name</label>
+            <input type="text" id="panel-name" placeholder="Main Panel, Garage Sub">
+          </div>
+          <label class="toggle-row">
+            <span>This is a subpanel</span>
+            <span class="switch">
+              <input type="checkbox" id="panel-is-sub">
+              <span class="switch-ui"></span>
+            </span>
+          </label>
+          <div class="form-group">
+            <label for="panel-spaces">Spaces</label>
+            <select id="panel-spaces">
+              <option value="4">4</option>
+              <option value="8">8</option>
+              <option value="12">12</option>
+              <option value="16">16</option>
+              <option value="20">20</option>
+              <option value="24">24</option>
+              <option value="30" selected>30</option>
+              <option value="40">40</option>
+              <option value="42">42</option>
+              <option value="48">48</option>
+              <option value="60">60</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3 class="form-section-title">Phases</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label>System</label>
+            <input type="hidden" id="panel-system" value="1p240" onchange="syncSystemFields(true)">
+            <div class="pick-row" id="panel-system-picks">
+              <button type="button" class="pick-btn selected" data-value="1p240" onclick="choosePick('panel-system','1p240',this)">Single-phase 120/240</button>
+              <button type="button" class="pick-btn" data-value="1p208" onclick="choosePick('panel-system','1p208',this)">Single-phase 120/208</button>
+              <button type="button" class="pick-btn" data-value="3p208" onclick="choosePick('panel-system','3p208',this)">3-phase 208Y/120</button>
+              <button type="button" class="pick-btn" data-value="3p480" onclick="choosePick('panel-system','3p480',this)">3-phase 480Y/277</button>
+              <button type="button" class="pick-btn" data-value="3p240d" onclick="choosePick('panel-system','3p240d',this)">3-phase 240 high-leg</button>
+            </div>
+          </div>
+          <div class="form-group" id="high-leg-wrap" style="display:none;">
+            <label>High leg</label>
+            <input type="hidden" id="panel-high-leg" value="B">
+            <div class="pick-row pick-3" id="panel-high-leg-picks">
+              <button type="button" class="pick-btn selected" data-value="B" onclick="choosePick('panel-high-leg','B',this)">B · standard</button>
+              <button type="button" class="pick-btn" data-value="A" onclick="choosePick('panel-high-leg','A',this)">A</button>
+              <button type="button" class="pick-btn" data-value="C" onclick="choosePick('panel-high-leg','C',this)">C</button>
+            </div>
+            <p class="field-help">Usually B. Match the panel label.</p>
+          </div>
+          <label class="toggle-row">
+            <span>Show phases</span>
+            <span class="switch">
+              <input type="checkbox" id="panel-show-phases">
+              <span class="switch-ui"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span>Show amp count per phase</span>
+            <span class="switch">
+              <input type="checkbox" id="panel-show-phase-load">
+              <span class="switch-ui"></span>
+            </span>
+          </label>
+          <button type="button" class="btn btn-ghost form-wide" onclick="openPhaseInfo()">Phase and voltage guide</button>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3 class="form-section-title">Main &amp; Feeds</h3>
+        <div class="form-card">
+          <label class="toggle-row">
+            <span>Has main breaker</span>
+            <span class="switch">
+              <input type="checkbox" id="panel-has-main" checked onchange="syncMainAmpsField()">
+              <span class="switch-ui"></span>
+            </span>
+          </label>
+          <div class="form-group" id="main-amps-wrap">
+            <label for="panel-main-amps">Main breaker amps</label>
+            <input type="number" id="panel-main-amps" placeholder="200" value="200" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>Feed-through lugs</label>
+            <input type="hidden" id="panel-lugs-feed" value="">
+            <div id="panel-lugs-picks" class="pick-row"></div>
+            <p class="field-help">Does not use a breaker space.</p>
+          </div>
+        </div>
+      </section>
+      <section class="form-section">
+        <h3 class="form-section-title">Notes</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="panel-notes">Notes</label>
+            <textarea id="panel-notes" placeholder="Location, brand"></textarea>
+          </div>
+        </div>
+      </section>
+      <div class="form-actions">
+        <button class="btn btn-danger" id="btn-delete-panel" style="display:none;" onclick="deletePanel()">Delete panel</button>
+        <button class="btn btn-primary" onclick="savePanel()">Save</button>
       </div>
     </div>
   </div>
@@ -1340,123 +1552,156 @@
     <div class="modal">
       <div class="modal-header">
         <h2 id="breaker-modal-title">Add Breaker</h2>
-        <button class="btn btn-sm btn-ghost" onclick="closeBreakerModal()">✕</button>
+        <button class="btn btn-ghost icon-hit" onclick="closeBreakerModal()" aria-label="Close">✕</button>
       </div>
 
-      <div class="form-group">
-        <label>Size (spaces)</label>
-        <div class="space-control">
-          <button type="button" onclick="changeSpaces(-1)">−</button>
-          <span class="space-value" id="spaces-value">1</span>
-          <button type="button" onclick="changeSpaces(1)">+</button>
+      <section class="form-section">
+        <h3 class="form-section-title">Size</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label>Spaces</label>
+            <div class="space-control">
+              <button type="button" onclick="changeSpaces(-1)" aria-label="Fewer spaces">−</button>
+              <span class="space-value" id="spaces-value">1</span>
+              <button type="button" onclick="changeSpaces(1)" aria-label="More spaces">+</button>
+            </div>
+            <p class="field-help">1 is tandem. More poles go down the column.</p>
+          </div>
         </div>
-        <div style="font-size:0.75rem;color:var(--text-dim);margin-top:6px;">
-          − from 1 = Tandem · + = more poles down the column
-        </div>
-      </div>
+      </section>
 
       <input type="checkbox" id="breaker-tandem" style="display:none;">
 
-      <div id="single-fields">
-        <div class="form-group">
-          <label>Breaker Name *</label>
-          <input type="text" id="breaker-name" placeholder="e.g. Kitchen Lights">
+      <section class="form-section" id="single-fields">
+        <h3 class="form-section-title">Circuit</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="breaker-name">Breaker name</label>
+            <input type="text" id="breaker-name" placeholder="Kitchen Lights">
+          </div>
+          <div class="form-group amps-field" id="amps-field-single">
+            <label>Amps</label>
+            <div class="amp-grid" data-amp-for="breaker-amps"></div>
+            <button type="button" class="amp-other" data-amp-for="breaker-amps">Other</button>
+            <input type="number" id="breaker-amps" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+          </div>
         </div>
-        <div class="form-group amps-field" id="amps-field-single">
-          <label>Amps</label>
-          <div class="amp-grid" data-amp-for="breaker-amps"></div>
-          <button type="button" class="amp-other" data-amp-for="breaker-amps">Other</button>
-          <input type="number" id="breaker-amps" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+      </section>
+
+      <section class="form-section" id="tandem-fields" style="display:none;">
+        <h3 class="form-section-title">Circuit</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="breaker-name-a">Circuit A name</label>
+            <input type="text" id="breaker-name-a" placeholder="Kitchen Lights">
+          </div>
+          <div class="form-group amps-field compact" id="amps-field-a">
+            <label>Circuit A amps</label>
+            <div class="amp-grid" data-amp-for="breaker-amps-a"></div>
+            <button type="button" class="amp-other" data-amp-for="breaker-amps-a">Other</button>
+            <input type="number" id="breaker-amps-a" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+          </div>
+          <div class="form-group">
+            <label for="breaker-name-b">Circuit B name</label>
+            <input type="text" id="breaker-name-b" placeholder="Bath Outlets">
+          </div>
+          <div class="form-group amps-field compact" id="amps-field-b">
+            <label>Circuit B amps</label>
+            <div class="amp-grid" data-amp-for="breaker-amps-b"></div>
+            <button type="button" class="amp-other" data-amp-for="breaker-amps-b">Other</button>
+            <input type="number" id="breaker-amps-b" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div id="tandem-fields" style="display:none;">
-        <div class="form-group">
-          <label>Circuit A Name *</label>
-          <input type="text" id="breaker-name-a" placeholder="e.g. Kitchen Lights">
+      <section class="form-section">
+        <h3 class="form-section-title">Protection</h3>
+        <div class="form-card">
+          <div class="prot-row">
+            <label class="prot-chip gfci-chip" for="breaker-gfci">
+              <input type="checkbox" id="breaker-gfci">
+              <span>GFCI</span>
+            </label>
+            <label class="prot-chip afci-chip" for="breaker-afci">
+              <input type="checkbox" id="breaker-afci">
+              <span>AFCI</span>
+            </label>
+            <label class="prot-chip spd-chip" for="breaker-spd">
+              <input type="checkbox" id="breaker-spd" onchange="syncSpdUi(true)">
+              <span>SPD</span>
+            </label>
+          </div>
+          <p class="field-help">White GFCI · Dark blue AFCI · Light blue both · Amber SPD</p>
         </div>
-        <div class="form-group amps-field compact" id="amps-field-a">
-          <label>Circuit A Amps</label>
-          <div class="amp-grid" data-amp-for="breaker-amps-a"></div>
-          <button type="button" class="amp-other" data-amp-for="breaker-amps-a">Other</button>
-          <input type="number" id="breaker-amps-a" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+      </section>
+
+      <section class="form-section">
+        <h3 class="form-section-title">Place</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="breaker-slot">Starting slot</label>
+            <select id="breaker-slot" onchange="refreshBreakerPhaseNote()"></select>
+          </div>
+          <div id="breaker-phase-note" class="phase-note" style="display:none;"></div>
         </div>
-        <div class="form-group">
-          <label>Circuit B Name *</label>
-          <input type="text" id="breaker-name-b" placeholder="e.g. Bath Outlets">
+      </section>
+
+      <section class="form-section">
+        <h3 class="form-section-title">Group</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <div class="field-label">
+              <label for="breaker-group" style="margin:0;">Area</label>
+              <button type="button" class="btn btn-ghost" onclick="toggleGroupOrderEditor()">Reorder</button>
+            </div>
+            <select id="breaker-group" onchange="onBreakerGroupChange()">
+              <option value="">None</option>
+            </select>
+            <input type="text" id="breaker-group-custom" placeholder="Custom group name" style="display:none;margin-top:8px;">
+            <div id="group-order-editor" style="display:none;margin-top:10px;">
+              <p class="field-help">Move favorites to the top</p>
+              <div id="group-order-list"></div>
+            </div>
+            <div id="group-legend" class="group-legend"></div>
+            <p class="field-help">Color on the tile. Does not move the breaker.</p>
+          </div>
         </div>
-        <div class="form-group amps-field compact" id="amps-field-b">
-          <label>Circuit B Amps</label>
-          <div class="amp-grid" data-amp-for="breaker-amps-b"></div>
-          <button type="button" class="amp-other" data-amp-for="breaker-amps-b">Other</button>
-          <input type="number" id="breaker-amps-b" class="amp-other-input" inputmode="numeric" autocomplete="off" placeholder="Other amps">
+      </section>
+
+      <section class="form-section">
+        <h3 class="form-section-title">Feeds</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label>Feeds subpanel</label>
+            <input type="hidden" id="breaker-feeds" value="">
+            <div id="breaker-feeds-picks" class="pick-row"></div>
+            <p class="field-help">The tile link opens that panel.</p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div style="display:flex; gap:10px; margin: 12px 0 16px; flex-wrap:wrap;">
-        <label class="prot-chip gfci-chip" for="breaker-gfci">
-          <input type="checkbox" id="breaker-gfci">
-          <span>GFCI</span>
-        </label>
-        <label class="prot-chip afci-chip" for="breaker-afci">
-          <input type="checkbox" id="breaker-afci">
-          <span>AFCI</span>
-        </label>
-        <label class="prot-chip spd-chip" for="breaker-spd">
-          <input type="checkbox" id="breaker-spd" onchange="syncSpdUi(true)">
-          <span>⚡ SPD</span>
-        </label>
-      </div>
-      <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:12px;">
-        White = GFCI · Dark Blue = AFCI · Light Blue = Dual · Amber = SPD
-      </div>
-
-      <div class="form-group">
-        <label>Starting Slot</label>
-        <select id="breaker-slot" onchange="refreshBreakerPhaseNote()"></select>
-      </div>
-      <div id="breaker-phase-note" class="phase-note" style="display:none;"></div>
-
-      <div class="form-group">
-        <label>Group (area)
-          <button type="button" class="btn btn-sm btn-ghost" style="float:right;padding:2px 8px;font-size:0.75rem;" onclick="toggleGroupOrderEditor()">Reorder</button>
-        </label>
-        <select id="breaker-group" onchange="onBreakerGroupChange()">
-          <option value="">None</option>
-        </select>
-        <input type="text" id="breaker-group-custom" placeholder="Custom group name" style="display:none;margin-top:8px;">
-        <div id="group-order-editor" style="display:none;margin-top:10px;border:1px solid var(--border,#2e2e42);border-radius:10px;padding:8px;">
-          <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:6px;">Move favorites to the top</div>
-          <div id="group-order-list"></div>
+      <section class="form-section">
+        <h3 class="form-section-title">Notes</h3>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="breaker-notes">Notes / fixtures</label>
+            <textarea id="breaker-notes" placeholder="Fixtures, outlets, wire size" rows="2"></textarea>
+            <p class="field-help">Shows on the PDF and Excel.</p>
+          </div>
         </div>
-        <div id="group-legend" class="group-legend"></div>
-        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Color-codes the breaker — does not change position</div>
+      </section>
+
+      <div id="breaker-nav" style="display:none; align-items:center; justify-content:space-between; margin:4px 0 16px; gap:8px;">
+        <button class="btn btn-ghost" type="button" id="btn-prev-breaker" onclick="navBreaker(-1)">← Prev</button>
+        <span id="breaker-nav-label" style="font-size:0.9rem;font-weight:700;color:#ffffff;"></span>
+        <button class="btn btn-ghost" type="button" id="btn-next-breaker" onclick="navBreaker(1)">Next →</button>
       </div>
 
-      <div class="form-group">
-        <label>Feeds subpanel</label>
-        <input type="hidden" id="breaker-feeds" value="">
-        <div id="breaker-feeds-picks" class="pick-row"></div>
-        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Optional. Other panels in this job. The tile link opens that panel.</div>
+      <div class="form-actions">
+        <button class="btn btn-danger" style="display:none;" id="btn-delete-breaker" onclick="deleteBreaker()">Delete breaker</button>
+        <button class="btn btn-primary" onclick="closeBreakerModal()">Done</button>
       </div>
-
-      <div class="form-group">
-        <label>Notes / Fixtures</label>
-        <textarea id="breaker-notes" placeholder="Fixtures, outlets, wire size…" rows="2" style="min-height:56px;"></textarea>
-        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px;">Shows on PDF / Excel</div>
-      </div>
-
-      <div id="breaker-nav" style="display:none; align-items:center; justify-content:space-between; margin:12px 0; gap:8px;">
-        <button class="btn btn-sm btn-ghost" type="button" id="btn-prev-breaker" onclick="navBreaker(-1)">← Prev</button>
-        <span id="breaker-nav-label" style="font-size:0.8rem;color:var(--text-dim);"></span>
-        <button class="btn btn-sm btn-ghost" type="button" id="btn-next-breaker" onclick="navBreaker(1)">Next →</button>
-      </div>
-
-      <div style="display:flex; gap:10px; margin-top:20px; flex-direction:row;">
-        <button class="btn btn-danger" style="flex:0 0 auto; min-width:90px; display:none;" id="btn-delete-breaker" onclick="deleteBreaker()">Delete</button>
-        <button class="btn btn-ghost" style="flex:1;" onclick="closeBreakerModal()">Done</button>
-      </div>
-      <div style="font-size:0.72rem;color:var(--text-dim);margin-top:8px;text-align:center;">Changes auto-save · use Undo on the panel if needed</div>
+      <p class="field-help" style="text-align:center;margin-top:10px;">Changes save as you go. Undo is on the panel.</p>
     </div>
   </div>
 
@@ -1464,7 +1709,7 @@
     <div class="phase-info-card">
       <div class="photos-sheet-head">
         <strong>Phases and voltages</strong>
-        <button type="button" class="btn btn-sm btn-ghost" onclick="closePhaseInfo()">Close</button>
+        <button type="button" class="btn btn-ghost icon-hit" onclick="closePhaseInfo()" aria-label="Close">✕</button>
       </div>
       <h3>What each system is</h3>
       <ul>
@@ -2138,6 +2383,7 @@
       }
       lastSystemChoice = document.getElementById('panel-system').value || '1p240';
       syncSystemFields();
+      syncMainAmpsField();
       document.getElementById('modal-panel').classList.add('open');
       settleHistory();
     }
@@ -2481,11 +2727,38 @@
       return value === '3p208' || value === '3p480' || value === '3p240d';
     }
 
+    function choosePick(inputId, value, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.value = value;
+      const row = btn && btn.closest ? btn.closest('.pick-row') : null;
+      if (row) row.querySelectorAll('.pick-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      input.dispatchEvent(new Event('change'));
+    }
+
+    function syncPickHighlight(inputId) {
+      const input = document.getElementById(inputId);
+      const row = document.getElementById(inputId + '-picks');
+      if (!input || !row) return;
+      row.querySelectorAll('.pick-btn').forEach(b => {
+        b.classList.toggle('selected', b.getAttribute('data-value') === input.value);
+      });
+    }
+
+    function syncMainAmpsField() {
+      const box = document.getElementById('panel-has-main');
+      const wrap = document.getElementById('main-amps-wrap');
+      if (!box || !wrap) return;
+      wrap.hidden = !box.checked;
+    }
+
     function syncSystemFields(fromUser) {
       const sys = document.getElementById('panel-system');
       const wrap = document.getElementById('high-leg-wrap');
-      if (!sys || !wrap) return;
-      wrap.style.display = sys.value === '3p240d' ? 'block' : 'none';
+      if (!sys) return;
+      if (wrap) wrap.style.display = sys.value === '3p240d' ? 'block' : 'none';
+      syncPickHighlight('panel-system');
+      syncPickHighlight('panel-high-leg');
       const nextThree = systemIsThree(sys.value);
       const prevThree = systemIsThree(lastSystemChoice);
       if (fromUser && nextThree !== prevThree) {
@@ -5805,11 +6078,11 @@
       if (!list) return;
       const order = getGroupOrder();
       list.innerHTML = order.map((id, i) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #2e2e42;">
+        <div class="order-row">
           <span class="group-dot dot-${id}"></span>
-          <span style="flex:1;font-size:0.9rem;">${esc(GROUP_LABELS[id] || id)}</span>
-          <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},-1)" ${i===0?'disabled':''}>↑</button>
-          <button type="button" class="btn btn-sm btn-ghost" style="padding:4px 10px;" onclick="moveGroupOrder(${i},1)" ${i===order.length-1?'disabled':''}>↓</button>
+          <span style="flex:1;font-size:1rem;font-weight:700;color:#fff;">${esc(GROUP_LABELS[id] || id)}</span>
+          <button type="button" class="btn btn-ghost" onclick="moveGroupOrder(${i},-1)" ${i===0?'disabled':''} aria-label="Move up">↑</button>
+          <button type="button" class="btn btn-ghost" onclick="moveGroupOrder(${i},1)" ${i===order.length-1?'disabled':''} aria-label="Move down">↓</button>
         </div>
       `).join('');
     }
@@ -5919,7 +6192,7 @@
 
     // Test/debug hook (used by automated tests; harmless in production)
     window.__panelTrackerTest = {
-      version: 'v2026.10.09k',
+      version: 'v2026.10.10',
       setZoom: (z) => { panelZoom = z; applyPanelTransform(); },
       getZoom: () => panelZoom,
       slotNumberFromPoint,
